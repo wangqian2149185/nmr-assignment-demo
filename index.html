@@ -424,8 +424,8 @@
       </div>
       <div class="panel-body">
         <label class="drop" id="sequenceDrop">
-          <input type="file" id="sequenceInput" accept=".txt,.csv,.tsv">
-          <span>Drop sequence TXT/CSV/TSV here, or click to choose. Accepted: one-letter sequence, columns like index + one-letter, three-letter, or combined labels such as E31.</span>
+          <input type="file" id="sequenceInput" accept=".txt,.csv,.tsv,.fa,.fasta,.faa">
+          <span>Drop sequence TXT/CSV/TSV/FASTA here, or click to choose. Accepted: FASTA, one-letter sequence, columns like index + one-letter, three-letter, or combined labels such as E31.</span>
         </label>
         <div class="sequence-controls">
           <label>
@@ -538,6 +538,14 @@
       const clean = text.replace(/\r\n/g, "\n").replace(/\r/g, "\n").trim();
       if (!clean) return { headers: [], rows: [] };
       const lines = clean.split("\n").filter(line => line.trim().length);
+      if (lines.some(line => line.trim().startsWith(">"))) {
+        const sequence = lines
+          .filter(line => !line.trim().startsWith(">"))
+          .join("")
+          .replace(/[^A-Za-z]/g, "")
+          .toUpperCase();
+        return { headers: ["sequence"], rows: [{ sequence }] };
+      }
       if (lines.length === 1 && /^[A-Za-z\s]+$/.test(lines[0])) {
         return { headers: ["sequence"], rows: [{ sequence: lines[0].replace(/\s+/g, "").toUpperCase() }] };
       }

@@ -55,10 +55,10 @@ http://localhost:8765
 ## What The App Does
 
 - Provides one upload/drop box per NMR experiment.
-- Parses CSV, TSV, whitespace-delimited TXT, and simple sequence TXT.
+- Parses CSV, TSV, whitespace-delimited TXT, simple sequence TXT, and FASTA sequence files.
 - Shows uploaded peak lists immediately as tables.
 - Lets the user map columns to dimensions such as `HN`, `Hx`, `N`, `CA`, `CO`, and `Cx`.
-- Lets the user upload a protein sequence as one-letter text or tabular index/residue columns.
+- Lets the user upload a protein sequence as FASTA, one-letter text, or tabular index/residue columns.
 - Sends the mapped data plus `skill.md` to the local backend.
 - The backend calls Anthropic with the user's own API key.
 - Shows assigned peak lists in tables.
