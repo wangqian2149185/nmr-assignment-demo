@@ -1,0 +1,12 @@
+{
+  "name": "nmr-assignment-demo",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Local LLM-powered protein NMR peak-list assignment demo.",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}

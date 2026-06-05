@@ -1,0 +1,1314 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>NMR Assignment Demo</title>
+  <style>
+    :root {
+      --bg: #f7f7f4;
+      --ink: #1f2523;
+      --muted: #66706b;
+      --line: #d9ddd7;
+      --panel: #ffffff;
+      --panel-2: #eef3f0;
+      --accent: #226f68;
+      --accent-2: #a4432f;
+      --warn: #a86d12;
+      --bad: #a83b42;
+      --good: #24724f;
+      --shadow: 0 12px 32px rgba(25, 33, 29, 0.08);
+      --radius: 8px;
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--ink);
+      font-size: 14px;
+    }
+
+    button, input, select, textarea {
+      font: inherit;
+    }
+
+    button {
+      border: 1px solid var(--line);
+      background: var(--panel);
+      color: var(--ink);
+      min-height: 34px;
+      border-radius: 6px;
+      padding: 0 12px;
+      cursor: pointer;
+    }
+
+    button.primary {
+      border-color: var(--accent);
+      background: var(--accent);
+      color: white;
+    }
+
+    button:disabled {
+      cursor: not-allowed;
+      opacity: 0.55;
+    }
+
+    header {
+      padding: 20px 28px 16px;
+      border-bottom: 1px solid var(--line);
+      background: #fbfbf8;
+      position: sticky;
+      top: 0;
+      z-index: 5;
+    }
+
+    header h1 {
+      margin: 0;
+      font-size: 22px;
+      letter-spacing: 0;
+    }
+
+    header p {
+      max-width: 980px;
+      margin: 6px 0 0;
+      color: var(--muted);
+      line-height: 1.45;
+    }
+
+    main {
+      padding: 22px 28px 36px;
+      display: grid;
+      gap: 18px;
+    }
+
+    .toolbar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .toolbar .group {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      align-items: center;
+    }
+
+    .status {
+      color: var(--muted);
+      min-height: 22px;
+    }
+
+    .status strong { color: var(--ink); }
+    .error { color: var(--bad); }
+    .ok { color: var(--good); }
+    .warn { color: var(--warn); }
+
+    .mode-note {
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.35;
+      max-width: 520px;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 14px;
+    }
+
+    @media (max-width: 1000px) {
+      .grid { grid-template-columns: 1fr; }
+      header, main { padding-left: 16px; padding-right: 16px; }
+    }
+
+    .panel {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      overflow: hidden;
+    }
+
+    .panel-head {
+      padding: 13px 14px;
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      align-items: center;
+      border-bottom: 1px solid var(--line);
+      background: #fcfcfa;
+    }
+
+    .panel-head h2 {
+      margin: 0;
+      font-size: 15px;
+      letter-spacing: 0;
+    }
+
+    .panel-body {
+      padding: 14px;
+      display: grid;
+      gap: 12px;
+    }
+
+    .drop {
+      border: 1px dashed #9eaaa3;
+      border-radius: 8px;
+      background: var(--panel-2);
+      min-height: 86px;
+      display: grid;
+      place-items: center;
+      text-align: center;
+      padding: 16px;
+      color: var(--muted);
+      transition: 0.12s ease;
+    }
+
+    .drop.dragover {
+      border-color: var(--accent);
+      background: #e1eeea;
+      color: var(--ink);
+    }
+
+    .drop input { display: none; }
+
+    .experiment-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 12px;
+    }
+
+    @media (max-width: 1200px) {
+      .experiment-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    }
+
+    @media (max-width: 720px) {
+      .experiment-grid { grid-template-columns: 1fr; }
+    }
+
+    .exp-card {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--panel);
+      min-width: 0;
+      overflow: hidden;
+    }
+
+    .exp-card .title {
+      padding: 10px 12px;
+      border-bottom: 1px solid var(--line);
+      display: flex;
+      justify-content: space-between;
+      gap: 8px;
+      align-items: center;
+      background: #fcfcfa;
+    }
+
+    .badge {
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      padding: 2px 8px;
+      color: var(--muted);
+      font-size: 12px;
+      white-space: nowrap;
+      background: #fff;
+    }
+
+    .badge.ok {
+      border-color: #b7d4c4;
+      color: var(--good);
+      background: #eef8f2;
+    }
+
+    .exp-card .content {
+      padding: 12px;
+      display: grid;
+      gap: 10px;
+    }
+
+    .tiny {
+      font-size: 12px;
+      color: var(--muted);
+      line-height: 1.35;
+    }
+
+    .map-row {
+      display: grid;
+      grid-template-columns: minmax(120px, 1fr) 120px;
+      align-items: center;
+      gap: 8px;
+    }
+
+    select, input[type="number"], input[type="text"] {
+      width: 100%;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      min-height: 32px;
+      padding: 5px 8px;
+      background: #fff;
+      color: var(--ink);
+    }
+
+    .table-wrap {
+      overflow: auto;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      max-height: 280px;
+      background: #fff;
+    }
+
+    table {
+      border-collapse: collapse;
+      min-width: 100%;
+      font-size: 12px;
+    }
+
+    th, td {
+      border-bottom: 1px solid #edf0ed;
+      border-right: 1px solid #edf0ed;
+      padding: 6px 8px;
+      text-align: left;
+      white-space: nowrap;
+    }
+
+    th {
+      background: #f4f6f3;
+      position: sticky;
+      top: 0;
+      z-index: 1;
+      font-weight: 650;
+    }
+
+    tr:last-child td { border-bottom: 0; }
+    td:last-child, th:last-child { border-right: 0; }
+
+    .sequence-controls {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 10px;
+      align-items: end;
+    }
+
+    @media (max-width: 900px) {
+      .sequence-controls { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    }
+
+    .result-layout {
+      display: grid;
+      grid-template-columns: minmax(0, 1.1fr) minmax(320px, 0.9fr);
+      gap: 14px;
+    }
+
+    @media (max-width: 1100px) {
+      .result-layout { grid-template-columns: 1fr; }
+    }
+
+    .plots {
+      display: grid;
+      gap: 12px;
+    }
+
+    .plot {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #fff;
+      padding: 10px;
+    }
+
+    .plot h3 {
+      margin: 0 0 6px;
+      font-size: 13px;
+    }
+
+    .legend {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px 10px;
+      align-items: center;
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .swatch {
+      display: inline-block;
+      width: 10px;
+      height: 10px;
+      border-radius: 2px;
+      margin-right: 4px;
+      vertical-align: -1px;
+    }
+
+    .inspector {
+      display: grid;
+      gap: 8px;
+    }
+
+    details {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #fff;
+    }
+
+    summary {
+      cursor: pointer;
+      padding: 9px 10px;
+      font-weight: 650;
+    }
+
+    details > div {
+      border-top: 1px solid var(--line);
+      padding: 10px;
+    }
+
+    .metric-grid {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 8px;
+    }
+
+    @media (max-width: 800px) {
+      .metric-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    }
+
+    .metric {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 10px;
+      background: #fff;
+    }
+
+    .metric b {
+      display: block;
+      font-size: 20px;
+      margin-bottom: 2px;
+    }
+
+    .metric span {
+      color: var(--muted);
+      font-size: 12px;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>NMR Assignment Demo</h1>
+    <p>Upload peak lists into experiment-specific boxes, confirm column dimensions, upload a protein sequence, then assign with the local LLM backend using the bundled NMR assignment skill. A browser-only heuristic fallback is also available.</p>
+  </header>
+
+  <main>
+    <section class="toolbar">
+      <div class="group">
+        <select id="assignmentMode" title="Assignment engine">
+          <option value="llm" selected>LLM backend</option>
+          <option value="heuristic">Browser heuristic</option>
+        </select>
+        <button class="primary" id="runBtn">Run assignment</button>
+        <button id="downloadBtn" disabled>Download assigned CSV</button>
+        <button id="clearBtn">Clear all</button>
+      </div>
+      <div>
+        <div class="status" id="status">Waiting for peak lists and sequence.</div>
+        <div class="mode-note">LLM mode requires running this folder with <code>npm start</code> and a local <code>.env</code> containing the user's own API key. The key is never stored in this HTML file.</div>
+      </div>
+    </section>
+
+    <section class="panel">
+      <div class="panel-head">
+        <h2>Protein Sequence</h2>
+        <span class="badge" id="seqBadge">not loaded</span>
+      </div>
+      <div class="panel-body">
+        <label class="drop" id="sequenceDrop">
+          <input type="file" id="sequenceInput" accept=".txt,.csv,.tsv">
+          <span>Drop sequence TXT/CSV/TSV here, or click to choose. Accepted: one-letter sequence, columns like index + one-letter, three-letter, or combined labels such as E31.</span>
+        </label>
+        <div class="sequence-controls">
+          <label>
+            <span class="tiny">Index column</span>
+            <select id="seqIndexCol"></select>
+          </label>
+          <label>
+            <span class="tiny">Residue column</span>
+            <select id="seqResidueCol"></select>
+          </label>
+          <label>
+            <span class="tiny">First residue number</span>
+            <input id="seqFirstIndex" type="number" value="1">
+          </label>
+          <button id="confirmSeqBtn">Confirm sequence</button>
+        </div>
+        <div id="seqMessage" class="tiny"></div>
+        <div class="table-wrap" id="seqPreview"></div>
+      </div>
+    </section>
+
+    <section class="experiment-grid" id="experiments"></section>
+
+    <section class="panel" id="resultsPanel">
+      <div class="panel-head">
+        <h2>Assignment Result</h2>
+        <span class="badge" id="resultBadge">not run</span>
+      </div>
+      <div class="panel-body">
+        <div class="metric-grid">
+          <div class="metric"><b id="metricPeaks">0</b><span>assigned peaks</span></div>
+          <div class="metric"><b id="metricHigh">0</b><span>high confidence</span></div>
+          <div class="metric"><b id="metricMedium">0</b><span>medium confidence</span></div>
+          <div class="metric"><b id="metricLow">0</b><span>low or blank</span></div>
+        </div>
+        <div class="result-layout">
+          <div>
+            <div class="table-wrap" id="assignmentPreview"></div>
+          </div>
+          <div class="plots">
+            <div class="legend" id="legend"></div>
+            <div class="plot"><h3>HSQC: HN vs N</h3><div id="plotHSQC"></div></div>
+            <div class="plot"><h3>HNCACB: HN vs Cx</h3><div id="plotHNCACB"></div></div>
+            <div class="plot"><h3>HN(CO)CACB / CBCA(CO)NH: HN vs Cx</h3><div id="plotCBCACONH"></div></div>
+          </div>
+        </div>
+        <div class="inspector" id="experimentResults"></div>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    const DIMENSIONS = ["ignore", "peak_id", "assignment", "HN", "Hx", "N", "CA", "CB", "Cx", "CO", "intensity", "sign"];
+    const TOL = { H: 0.2, C: 0.5, N: 0.8 };
+    const THREE_TO_ONE = {
+      ALA: "A", ARG: "R", ASN: "N", ASP: "D", CYS: "C", CYSS: "C", GLN: "Q", GLU: "E",
+      GLY: "G", HIS: "H", ILE: "I", LEU: "L", LYS: "K", MET: "M", PHE: "F", PRO: "P",
+      SER: "S", THR: "T", TRP: "W", TYR: "Y", VAL: "V"
+    };
+    const CA_CB = {
+      A: { CA: 52.5, CB: 19.0 }, R: { CA: 56.1, CB: 30.8 }, N: { CA: 53.2, CB: 38.9 },
+      D: { CA: 54.6, CB: 40.8 }, C: { CA: 58.3, CB: 28.2 }, Q: { CA: 55.8, CB: 29.2 },
+      E: { CA: 56.4, CB: 30.0 }, G: { CA: 45.1, CB: null }, H: { CA: 55.2, CB: 29.9 },
+      I: { CA: 61.4, CB: 38.6 }, L: { CA: 55.2, CB: 42.1 }, K: { CA: 56.3, CB: 32.9 },
+      M: { CA: 55.3, CB: 32.6 }, F: { CA: 58.0, CB: 39.5 }, P: { CA: 63.1, CB: 31.7 },
+      S: { CA: 58.2, CB: 63.8 }, T: { CA: 62.1, CB: 69.8 }, W: { CA: 57.5, CB: 29.4 },
+      Y: { CA: 58.1, CB: 38.6 }, V: { CA: 62.3, CB: 32.6 }
+    };
+    const CATEGORY = {
+      Positive: { residues: new Set(["R", "H", "K"]), color: "#c04a37" },
+      Negative: { residues: new Set(["D", "E"]), color: "#2e6fb8" },
+      Polar: { residues: new Set(["S", "T", "N", "Q"]), color: "#2f8f73" },
+      "Alkyl-hydro": { residues: new Set(["A", "V", "I", "L", "M"]), color: "#9b6a28" },
+      "Aromatic-hydro": { residues: new Set(["F", "Y", "W"]), color: "#7856a5" },
+      "Cys(SH)": { residues: new Set(["C"]), color: "#d7a51f" },
+      "Cys(S-S)": { residues: new Set([]), color: "#b88900" },
+      Gly: { residues: new Set(["G"]), color: "#5d7c88" },
+      Pro: { residues: new Set(["P"]), color: "#555555" },
+      Other: { residues: new Set([]), color: "#777777" }
+    };
+    const EXPERIMENTS = [
+      { key: "HSQC", title: "1H-15N HSQC", aliases: ["hsqc"], dims: ["peak_id", "N", "HN"], assignmentAtoms: ["N", "HN"] },
+      { key: "HNCA", title: "3D HNCA", aliases: ["hnca"], dims: ["peak_id", "N", "CA", "HN"], assignmentAtoms: ["N", "CA", "HN"] },
+      { key: "HNCOCA", title: "3D HN(CO)CA", aliases: ["hncoca", "hn(co)ca"], dims: ["peak_id", "N", "CA", "HN"], assignmentAtoms: ["N", "CA", "HN"] },
+      { key: "HNCACB", title: "3D HNCACB", aliases: ["hncacb"], dims: ["peak_id", "N", "Cx", "HN"], assignmentAtoms: ["N", "Cx", "HN"] },
+      { key: "CBCACONH", title: "3D HNcoCACB / CBCA(CO)NH", aliases: ["cbcaconh", "cbca", "hncocacb", "hn(co)cacb"], dims: ["peak_id", "N", "Cx", "HN"], assignmentAtoms: ["N", "Cx", "HN"] },
+      { key: "HNCO", title: "3D HNCO", aliases: ["hnco"], dims: ["peak_id", "N", "CO", "HN"], assignmentAtoms: ["N", "CO", "HN"] },
+      { key: "HBHACONH", title: "3D HBHA(CO)NH", aliases: ["hbha"], dims: ["peak_id", "N", "Hx", "HN"], assignmentAtoms: ["N", "Hx", "HN"] },
+      { key: "HCCH_TOCSY", title: "3D HCCH-TOCSY", aliases: ["hcch"], dims: ["peak_id", "Hx", "Cx", "Hx"], assignmentAtoms: ["Hx", "Cx", "Hx"] }
+    ];
+
+    const state = {
+      experiments: Object.fromEntries(EXPERIMENTS.map(exp => [exp.key, { fileName: "", headers: [], rows: [], mapping: {} }])),
+      sequenceRaw: { headers: [], rows: [], mode: "" },
+      sequence: [],
+      assignments: [],
+      perExperiment: {},
+      lastEngine: ""
+    };
+
+    const $ = id => document.getElementById(id);
+
+    function setStatus(text, cls = "") {
+      const el = $("status");
+      el.className = "status " + cls;
+      el.innerHTML = text;
+    }
+
+    function parseDelimited(text) {
+      const clean = text.replace(/\r\n/g, "\n").replace(/\r/g, "\n").trim();
+      if (!clean) return { headers: [], rows: [] };
+      const lines = clean.split("\n").filter(line => line.trim().length);
+      if (lines.length === 1 && /^[A-Za-z\s]+$/.test(lines[0])) {
+        return { headers: ["sequence"], rows: [{ sequence: lines[0].replace(/\s+/g, "").toUpperCase() }] };
+      }
+      const delimiter = inferDelimiter(lines[0]);
+      const records = lines.map(line => splitCsvLine(line, delimiter));
+      const first = records[0] || [];
+      const hasHeader = first.some(cell => /[A-Za-z_]/.test(cell)) && !first.every(cell => isFiniteNumber(cell));
+      const headers = hasHeader ? first.map((h, i) => h.trim() || `col${i + 1}`) : first.map((_, i) => `col${i + 1}`);
+      const data = hasHeader ? records.slice(1) : records;
+      const rows = data.map(record => {
+        const row = {};
+        headers.forEach((h, i) => row[h] = (record[i] ?? "").trim());
+        return row;
+      });
+      return { headers, rows };
+    }
+
+    function inferDelimiter(line) {
+      const options = [",", "\t", ";"];
+      let best = ",";
+      let bestCount = -1;
+      for (const d of options) {
+        const count = splitCsvLine(line, d).length;
+        if (count > bestCount) {
+          best = d;
+          bestCount = count;
+        }
+      }
+      if (bestCount <= 1 && /\s+/.test(line.trim())) return " ";
+      return best;
+    }
+
+    function splitCsvLine(line, delimiter) {
+      if (delimiter === " ") return line.trim().split(/\s+/);
+      const out = [];
+      let current = "";
+      let quoted = false;
+      for (let i = 0; i < line.length; i++) {
+        const ch = line[i];
+        if (ch === '"' && line[i + 1] === '"') {
+          current += '"';
+          i += 1;
+        } else if (ch === '"') {
+          quoted = !quoted;
+        } else if (ch === delimiter && !quoted) {
+          out.push(current);
+          current = "";
+        } else {
+          current += ch;
+        }
+      }
+      out.push(current);
+      return out;
+    }
+
+    function isFiniteNumber(value) {
+      return value !== "" && Number.isFinite(Number(value));
+    }
+
+    function inferDimension(header, exp) {
+      const h = header.toLowerCase().replace(/[^a-z0-9]/g, "");
+      if (/^(peak)?id$|peakid|label|assignment/.test(h)) return h.includes("assign") ? "assignment" : "peak_id";
+      if (h.includes("hn") || h === "h") return "HN";
+      if (h.includes("nppm") || h === "n" || h.includes("15n")) return "N";
+      if (h.includes("caorcb") || h.includes("cacb") || h.includes("cx") || h.includes("carbon")) return "Cx";
+      if (h.includes("ca")) return "CA";
+      if (h.includes("cb")) return "CB";
+      if (h.includes("co") || h === "c") return "CO";
+      if (h.includes("ha") || h.includes("hb") || h.includes("hx")) return "Hx";
+      if (h.includes("intensity") || h.includes("height") || h.includes("volume")) return "intensity";
+      const fallback = exp.dims[Math.min(Object.keys(state.experiments[exp.key].mapping || {}).length, exp.dims.length - 1)];
+      return fallback || "ignore";
+    }
+
+    function renderExperiments() {
+      const root = $("experiments");
+      root.innerHTML = "";
+      for (const exp of EXPERIMENTS) {
+        const data = state.experiments[exp.key];
+        const card = document.createElement("section");
+        card.className = "exp-card";
+        card.innerHTML = `
+          <div class="title">
+            <strong>${exp.title}</strong>
+            <span class="badge ${data.rows.length ? "ok" : ""}" id="badge-${exp.key}">${data.rows.length ? data.rows.length + " peaks" : "empty"}</span>
+          </div>
+          <div class="content">
+            <label class="drop" id="drop-${exp.key}">
+              <input type="file" id="input-${exp.key}" accept=".txt,.csv,.tsv">
+              <span>Drop peak list here, or click to choose.</span>
+            </label>
+            <div class="tiny" id="file-${exp.key}">${data.fileName ? escapeHtml(data.fileName) : "No file loaded."}</div>
+            <div id="map-${exp.key}"></div>
+            <div class="table-wrap" id="preview-${exp.key}"></div>
+          </div>`;
+        root.appendChild(card);
+        setupDrop(`drop-${exp.key}`, `input-${exp.key}`, files => handleExperimentFiles(exp.key, files));
+        renderExperimentMapping(exp.key);
+        renderPreview(`preview-${exp.key}`, data.headers, data.rows.slice(0, 6));
+      }
+    }
+
+    function renderExperimentMapping(key) {
+      const exp = EXPERIMENTS.find(item => item.key === key);
+      const data = state.experiments[key];
+      const root = $(`map-${key}`);
+      if (!data.headers.length) {
+        root.innerHTML = `<div class="tiny">Expected dimensions: ${exp.dims.join(" / ")}</div>`;
+        return;
+      }
+      root.innerHTML = data.headers.map(header => {
+        const value = data.mapping[header] || inferDimension(header, exp);
+        data.mapping[header] = value;
+        return `<label class="map-row"><span class="tiny">${escapeHtml(header)}</span>${dimensionSelect(key, header, value)}</label>`;
+      }).join("");
+      root.querySelectorAll("select").forEach(select => {
+        select.addEventListener("change", event => {
+          data.mapping[event.target.dataset.header] = event.target.value;
+          refreshStatus();
+        });
+      });
+    }
+
+    function dimensionSelect(key, header, value) {
+      const options = DIMENSIONS.map(dim => `<option value="${dim}" ${dim === value ? "selected" : ""}>${dim}</option>`).join("");
+      return `<select data-key="${key}" data-header="${escapeHtml(header)}">${options}</select>`;
+    }
+
+    function setupDrop(dropId, inputId, onFiles) {
+      const drop = $(dropId);
+      const input = $(inputId);
+      drop.addEventListener("click", () => input.click());
+      input.addEventListener("change", () => onFiles(input.files));
+      drop.addEventListener("dragover", event => {
+        event.preventDefault();
+        drop.classList.add("dragover");
+      });
+      drop.addEventListener("dragleave", () => drop.classList.remove("dragover"));
+      drop.addEventListener("drop", event => {
+        event.preventDefault();
+        drop.classList.remove("dragover");
+        onFiles(event.dataTransfer.files);
+      });
+    }
+
+    async function readFile(file) {
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(String(reader.result || ""));
+        reader.onerror = reject;
+        reader.readAsText(file);
+      });
+    }
+
+    async function handleExperimentFiles(key, files) {
+      const file = files && files[0];
+      if (!file) return;
+      const text = await readFile(file);
+      const parsed = parseDelimited(text);
+      const data = state.experiments[key];
+      data.fileName = file.name;
+      data.headers = parsed.headers;
+      data.rows = parsed.rows;
+      data.mapping = {};
+      renderExperiments();
+      refreshStatus();
+    }
+
+    function setupSequence() {
+      setupDrop("sequenceDrop", "sequenceInput", async files => {
+        const file = files && files[0];
+        if (!file) return;
+        const text = await readFile(file);
+        const parsed = parseDelimited(text);
+        state.sequenceRaw = { ...parsed, mode: parsed.headers.length === 1 && parsed.headers[0] === "sequence" ? "raw" : "table" };
+        populateSequenceControls();
+        renderPreview("seqPreview", parsed.headers, parsed.rows.slice(0, 12));
+        $("seqBadge").textContent = `${parsed.rows.length} rows loaded`;
+        $("seqBadge").className = "badge ok";
+        $("seqMessage").textContent = "Confirm the index and residue columns before assignment.";
+        confirmSequence();
+      });
+      $("confirmSeqBtn").addEventListener("click", confirmSequence);
+      $("seqFirstIndex").addEventListener("change", confirmSequence);
+      $("seqIndexCol").addEventListener("change", confirmSequence);
+      $("seqResidueCol").addEventListener("change", confirmSequence);
+    }
+
+    function populateSequenceControls() {
+      const headers = state.sequenceRaw.headers;
+      const indexSel = $("seqIndexCol");
+      const residueSel = $("seqResidueCol");
+      const opts = [`<option value="">none</option>`].concat(headers.map(h => `<option value="${escapeHtml(h)}">${escapeHtml(h)}</option>`)).join("");
+      indexSel.innerHTML = opts;
+      residueSel.innerHTML = opts;
+      const indexGuess = headers.find(h => /seq|index|res.*num|number|id/i.test(h)) || "";
+      const residueGuess = headers.find(h => /one|res|comp|aa|label/i.test(h)) || headers[0] || "";
+      indexSel.value = state.sequenceRaw.mode === "raw" ? "" : indexGuess;
+      residueSel.value = state.sequenceRaw.mode === "raw" ? "sequence" : residueGuess;
+    }
+
+    function confirmSequence() {
+      const raw = state.sequenceRaw;
+      if (!raw.rows.length) {
+        state.sequence = [];
+        return;
+      }
+      try {
+        const first = Number($("seqFirstIndex").value || 1);
+        const indexCol = $("seqIndexCol").value;
+        const residueCol = $("seqResidueCol").value;
+        let residues = [];
+        if (raw.mode === "raw") {
+          const sequence = String(raw.rows[0].sequence || "").replace(/[^A-Za-z]/g, "").toUpperCase();
+          residues = [...sequence].map((one, offset) => makeResidue(first + offset, one));
+        } else {
+          if (!residueCol) throw new Error("Choose a residue column.");
+          residues = raw.rows.map((row, offset) => {
+            const parsed = parseResidueCell(row[residueCol]);
+            const idx = indexCol && row[indexCol] ? Number(String(row[indexCol]).match(/-?\d+/)?.[0]) : (parsed.index || first + offset);
+            if (!Number.isFinite(idx)) throw new Error(`Invalid residue index near row ${offset + 1}.`);
+            return makeResidue(idx, parsed.one);
+          });
+        }
+        residues.forEach((residue, i) => {
+          if (!/^[A-Z]$/.test(residue.one) || !CA_CB[residue.one]) {
+            throw new Error(`Invalid residue type near row ${i + 1}: ${residue.one || "(blank)"}`);
+          }
+        });
+        state.sequence = residues;
+        $("seqMessage").innerHTML = `<span class="ok">Confirmed ${residues.length} residues from ${residues[0].label} to ${residues[residues.length - 1].label}.</span>`;
+        $("seqBadge").textContent = `${residues.length} residues`;
+        $("seqBadge").className = "badge ok";
+        renderPreview("seqPreview", ["index", "one_letter", "residue_label", "category"], residues.map(r => ({
+          index: r.index, one_letter: r.one, residue_label: r.label, category: r.category
+        })).slice(0, 24));
+      } catch (error) {
+        state.sequence = [];
+        $("seqMessage").innerHTML = `<span class="error">${escapeHtml(error.message)}</span>`;
+        $("seqBadge").textContent = "sequence error";
+        $("seqBadge").className = "badge";
+      }
+      refreshStatus();
+    }
+
+    function parseResidueCell(value) {
+      const text = String(value || "").trim().toUpperCase();
+      if (!text) return { one: "", index: null };
+      const combined = text.match(/^([A-Z])\s*(-?\d+)$/) || text.match(/^(-?\d+)\s*([A-Z])$/);
+      if (combined) {
+        const one = /^[A-Z]$/.test(combined[1]) ? combined[1] : combined[2];
+        const index = Number(/^-?\d+$/.test(combined[1]) ? combined[1] : combined[2]);
+        return { one, index };
+      }
+      if (/^[A-Z]$/.test(text)) return { one: text, index: null };
+      if (THREE_TO_ONE[text]) return { one: THREE_TO_ONE[text], index: null };
+      const three = text.match(/[A-Z]{3}/)?.[0];
+      if (three && THREE_TO_ONE[three]) return { one: THREE_TO_ONE[three], index: Number(text.match(/-?\d+/)?.[0] || NaN) || null };
+      return { one: text[0], index: Number(text.match(/-?\d+/)?.[0] || NaN) || null };
+    }
+
+    function makeResidue(index, one) {
+      const category = residueCategory(one);
+      return { index, one, label: `${one}${index}`, category, color: CATEGORY[category].color };
+    }
+
+    function residueCategory(one) {
+      for (const [name, data] of Object.entries(CATEGORY)) {
+        if (data.residues.has(one)) return name;
+      }
+      return "Other";
+    }
+
+    function normalizedRows(key) {
+      const data = state.experiments[key];
+      return data.rows.map((row, rowIndex) => {
+        const out = { original: row, rowIndex, peak_id: `${key}_${rowIndex + 1}` };
+        for (const [header, dim] of Object.entries(data.mapping)) {
+          const value = row[header];
+          if (dim === "peak_id") out.peak_id = value || out.peak_id;
+          else if (dim !== "ignore") out[dim] = value;
+        }
+        out.HN_num = numberOrNull(out.HN || out.Hx);
+        out.N_num = numberOrNull(out.N);
+        out.C_num = numberOrNull(out.Cx || out.CA || out.CB || out.CO);
+        return out;
+      });
+    }
+
+    function numberOrNull(value) {
+      const n = Number(String(value ?? "").replace(/[^0-9.+-]/g, ""));
+      return Number.isFinite(n) ? n : null;
+    }
+
+    async function runAssignment() {
+      const mode = $("assignmentMode").value;
+      if (mode === "llm") {
+        await runLLMAssignment();
+      } else {
+        runHeuristicAssignment();
+      }
+    }
+
+    async function runLLMAssignment() {
+      if (!state.sequence.length) {
+        setStatus("Confirm a valid protein sequence first.", "error");
+        return;
+      }
+      const loaded = EXPERIMENTS.filter(exp => state.experiments[exp.key].rows.length);
+      if (!loaded.length) {
+        setStatus("Load at least one peak list before running LLM assignment.", "error");
+        return;
+      }
+      $("runBtn").disabled = true;
+      $("runBtn").textContent = "Assigning...";
+      setStatus("Sending mapped peak lists to local LLM backend. This may take a minute.", "warn");
+      try {
+        const response = await fetch("/api/assign", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(buildAssignmentPayload())
+        });
+        const data = await response.json().catch(() => ({}));
+        if (!response.ok) {
+          throw new Error(data.error || `LLM backend returned HTTP ${response.status}.`);
+        }
+        applyLLMResult(data.assignments || []);
+        state.lastEngine = data.engine || "llm";
+        renderResults();
+        setStatus(`<strong>LLM assignment complete.</strong> Review confidence, notes, and plots before downloading.`, "ok");
+      } catch (error) {
+        setStatus(`LLM assignment failed: ${escapeHtml(error.message)}. Confirm the local server is running with an API key, or switch to Browser heuristic mode.`, "error");
+      } finally {
+        $("runBtn").disabled = false;
+        $("runBtn").textContent = "Run assignment";
+      }
+    }
+
+    function buildAssignmentPayload() {
+      const experiments = {};
+      for (const exp of EXPERIMENTS) {
+        const data = state.experiments[exp.key];
+        if (!data.rows.length) continue;
+        experiments[exp.key] = {
+          title: exp.title,
+          headers: data.headers,
+          mapping: data.mapping,
+          rows: data.rows,
+          normalized_rows: normalizedRows(exp.key).map(row => ({
+            peak_id: row.peak_id,
+            HN: row.HN_num,
+            Hx: numberOrNull(row.Hx),
+            N: row.N_num,
+            C: row.C_num,
+            raw: row.original
+          }))
+        };
+      }
+      return {
+        sequence: state.sequence.map(r => ({
+          index: r.index,
+          one_letter: r.one,
+          residue_label: r.label,
+          category: r.category
+        })),
+        experiments
+      };
+    }
+
+    function applyLLMResult(assignments) {
+      const byPeak = {};
+      for (const exp of EXPERIMENTS) {
+        for (const row of normalizedRows(exp.key)) {
+          byPeak[`${exp.key}::${row.peak_id}`] = row;
+        }
+      }
+      state.assignments = [];
+      state.perExperiment = {};
+      for (const exp of EXPERIMENTS) {
+        state.perExperiment[exp.key] = [];
+      }
+      for (const item of assignments) {
+        const key = item.experiment_key || item.experiment || "";
+        const expExists = Boolean(state.experiments[key]);
+        const fallbackRows = expExists ? normalizedRows(key) : [];
+        const row = byPeak[`${key}::${item.peak_id}`] || fallbackRows[Number(item.row_index || 0)] || { original: {}, peak_id: item.peak_id || "" };
+        const assignedLabel = item.assigned_label || makeLabelFromLLM(item);
+        const out = {
+          experiment_key: key,
+          peak_id: item.peak_id || row.peak_id || "",
+          assigned_label: assignedLabel,
+          assigned_anchor_residue: item.assigned_anchor_residue || item.anchor_residue || "",
+          assigned_source_residue: item.assigned_source_residue || item.source_residue || "",
+          assigned_source_atoms: Array.isArray(item.assigned_source_atoms) ? item.assigned_source_atoms.join(",") : (item.assigned_source_atoms || item.source_atoms || ""),
+          assigned_relation: item.assigned_relation || item.relation || "",
+          confidence: item.confidence || "medium",
+          notes: item.notes || "LLM assignment",
+          HN: row.HN_num ?? numberOrNull(item.HN),
+          N: row.N_num ?? numberOrNull(item.N),
+          C: row.C_num ?? numberOrNull(item.C),
+          original: row.original || {}
+        };
+        state.assignments.push(out);
+        if (!state.perExperiment[out.experiment_key]) state.perExperiment[out.experiment_key] = [];
+        state.perExperiment[out.experiment_key].push(out);
+      }
+    }
+
+    function makeLabelFromLLM(item) {
+      const anchor = item.assigned_anchor_residue || item.anchor_residue || "";
+      const atoms = Array.isArray(item.assigned_source_atoms) ? item.assigned_source_atoms : String(item.assigned_source_atoms || "").split(",");
+      if (!anchor) return "";
+      if ((item.experiment_key || "") === "HSQC") return `${anchor}N-HN`;
+      const middle = (atoms[1] || "Cx").trim();
+      return `${anchor}N-${middle}-HN`;
+    }
+
+    function runHeuristicAssignment() {
+      state.assignments = [];
+      state.perExperiment = {};
+      if (!state.sequence.length) {
+        setStatus("Confirm a valid protein sequence first.", "error");
+        return;
+      }
+      const hsqc = normalizedRows("HSQC").filter(row => row.HN_num !== null && row.N_num !== null);
+      if (!hsqc.length) {
+        setStatus("Load 1H-15N HSQC with HN and N dimensions before running assignment.", "error");
+        return;
+      }
+      const anchors = assignAnchors(hsqc);
+      for (const exp of EXPERIMENTS) {
+        const rows = normalizedRows(exp.key);
+        state.perExperiment[exp.key] = rows.map(row => assignPeak(exp, row, anchors));
+        state.assignments.push(...state.perExperiment[exp.key]);
+      }
+      renderResults();
+      state.lastEngine = "browser heuristic";
+      setStatus(`<strong>Heuristic assignment complete.</strong> Review confidence and plots before downloading.`, "ok");
+    }
+
+    function assignAnchors(hsqcRows) {
+      const candidates = state.sequence.filter(r => r.one !== "P");
+      const used = new Set();
+      const scored = hsqcRows.map(row => {
+        const options = candidates.map(residue => ({ residue, score: scoreAnchor(row, residue) }))
+          .sort((a, b) => b.score - a.score);
+        return { row, options };
+      }).sort((a, b) => b.options[0].score - a.options[0].score);
+
+      const anchors = [];
+      for (const item of scored) {
+        const best = item.options.find(option => !used.has(option.residue.label));
+        if (best && best.score >= 1.2) {
+          used.add(best.residue.label);
+          anchors.push({ ...item.row, residue: best.residue, score: best.score, confidence: best.score >= 3 ? "high" : "medium" });
+        } else {
+          anchors.push({ ...item.row, residue: null, score: best ? best.score : 0, confidence: "low" });
+        }
+      }
+      return anchors;
+    }
+
+    function scoreAnchor(anchor, residue) {
+      let score = 0;
+      if (residue.one === "G" && anchor.N_num >= 90 && anchor.N_num <= 110) score += 1.2;
+      if (residue.one !== "G" && (anchor.N_num < 90 || anchor.N_num > 110)) score += 0.35;
+      const prev = previousResidue(residue);
+      const hnca = carbonValuesNear("HNCA", anchor);
+      const hncacb = carbonValuesNear("HNCACB", anchor);
+      const cbcaconh = carbonValuesNear("CBCACONH", anchor);
+      score += carbonEvidenceScore(hnca, residue) * 0.7;
+      score += carbonEvidenceScore(hncacb, residue) * 0.9;
+      if (prev) score += carbonEvidenceScore(hncacb, prev) * 0.55;
+      if (prev) score += carbonEvidenceScore(cbcaconh, prev) * 1.2;
+      if (residue.one === "G" && [...hnca, ...hncacb, ...cbcaconh].some(v => v > 58)) score -= 0.9;
+      return score;
+    }
+
+    function previousResidue(residue) {
+      const idx = state.sequence.findIndex(item => item.label === residue.label);
+      return idx > 0 ? state.sequence[idx - 1] : null;
+    }
+
+    function carbonValuesNear(key, anchor) {
+      return normalizedRows(key)
+        .filter(row => near(row.HN_num, anchor.HN_num, TOL.H) && near(row.N_num, anchor.N_num, TOL.N) && row.C_num !== null)
+        .map(row => row.C_num);
+    }
+
+    function carbonEvidenceScore(values, residue) {
+      if (!values.length || !residue) return 0;
+      const expected = CA_CB[residue.one] || {};
+      let score = 0;
+      if (expected.CA !== null && values.some(v => Math.abs(v - expected.CA) <= 1.2)) score += 1;
+      if (expected.CB !== null && values.some(v => Math.abs(v - expected.CB) <= 1.2)) score += 1;
+      if (residue.one === "G" && !values.some(v => v > 55)) score += 0.8;
+      return score;
+    }
+
+    function near(a, b, tol) {
+      return a !== null && b !== null && Math.abs(a - b) <= tol;
+    }
+
+    function assignPeak(exp, row, anchors) {
+      const anchor = anchors.find(item => near(item.HN_num, row.HN_num, TOL.H) && near(item.N_num, row.N_num, TOL.N));
+      const anchorResidue = anchor?.residue || null;
+      const source = chooseSourceResidue(exp.key, row, anchorResidue);
+      const atom = chooseCarbonAtom(row, source);
+      const atoms = atomsForExperiment(exp.key, atom);
+      const relation = relationForExperiment(exp.key, source, anchorResidue);
+      const confidence = confidenceFor(exp.key, anchor, source, row);
+      const assignmentLabel = makeAssignmentLabel(exp.key, anchorResidue, source, atoms);
+      const notes = [
+        anchorResidue ? `anchor=${anchorResidue.label}` : "anchor not assigned",
+        source ? `source=${source.label}` : "source not assigned",
+        `workflow=${exp.title}`
+      ].join("; ");
+      return {
+        experiment_key: exp.key,
+        peak_id: row.peak_id,
+        assigned_label: assignmentLabel,
+        assigned_anchor_residue: anchorResidue?.label || "",
+        assigned_source_residue: source?.label || "",
+        assigned_source_atoms: atoms.join(","),
+        assigned_relation: relation,
+        confidence,
+        notes,
+        HN: row.HN_num,
+        N: row.N_num,
+        C: row.C_num,
+        original: row.original
+      };
+    }
+
+    function chooseSourceResidue(key, row, anchorResidue) {
+      if (!anchorResidue) return null;
+      const prev = previousResidue(anchorResidue);
+      if (["CBCACONH", "HNCO", "HNCOCA", "HBHACONH"].includes(key)) return prev || null;
+      if (key === "HNCA" || key === "HNCACB") {
+        const currentScore = row.C_num === null ? 0 : closenessToResidue(row.C_num, anchorResidue);
+        const prevScore = row.C_num === null || !prev ? 0 : closenessToResidue(row.C_num, prev);
+        return prevScore > currentScore + 0.15 ? prev : anchorResidue;
+      }
+      return anchorResidue;
+    }
+
+    function closenessToResidue(c, residue) {
+      const expected = CA_CB[residue.one] || {};
+      const values = [expected.CA, expected.CB].filter(v => v !== null && v !== undefined);
+      if (!values.length) return -10;
+      return Math.max(...values.map(v => 1 / (1 + Math.abs(c - v))));
+    }
+
+    function chooseCarbonAtom(row, residue) {
+      if (row.C_num === null || !residue) return "";
+      const expected = CA_CB[residue.one] || {};
+      const dCA = expected.CA == null ? Infinity : Math.abs(row.C_num - expected.CA);
+      const dCB = expected.CB == null ? Infinity : Math.abs(row.C_num - expected.CB);
+      if (dCA < dCB && dCA < 2.5) return "CA";
+      if (dCB < 2.5) return "CB";
+      return "Cx";
+    }
+
+    function atomsForExperiment(key, carbonAtom) {
+      if (key === "HSQC") return ["N", "HN"];
+      if (key === "HNCO") return ["N", "CO", "HN"];
+      if (key === "HBHACONH") return ["N", "Hx", "HN"];
+      if (key === "HCCH_TOCSY") return ["Hx", "Cx", "Hx"];
+      return ["N", carbonAtom || "Cx", "HN"];
+    }
+
+    function relationForExperiment(key, source, anchor) {
+      if (!source || !anchor) return "";
+      if (source.label === anchor.label) return "intra";
+      if (previousResidue(anchor)?.label === source.label) return "sequential_i_minus_1";
+      if (key === "HCCH_TOCSY") return "intra_spin_system";
+      return "ambiguous";
+    }
+
+    function confidenceFor(key, anchor, source, row) {
+      if (!anchor?.residue || !source) return "low";
+      if (["CBCACONH", "HNCO", "HNCOCA"].includes(key) && !previousResidue(anchor.residue)) return "low";
+      if (row.C_num !== null && source && closenessToResidue(row.C_num, source) < 0.25 && !["HSQC", "HNCO", "HBHACONH"].includes(key)) return "medium";
+      return anchor.confidence || "medium";
+    }
+
+    function makeAssignmentLabel(key, anchor, source, atoms) {
+      if (!anchor) return "";
+      if (key === "HSQC") return `${anchor.label}N-HN`;
+      const middle = atoms[1] || "";
+      const residue = source || anchor;
+      if (!residue || !middle) return `${anchor.label}N-HN`;
+      return `${anchor.label}N-${middle}-HN`;
+    }
+
+    function renderResults() {
+      const rows = state.assignments;
+      $("resultBadge").textContent = `${rows.length} peaks`;
+      $("resultBadge").className = "badge ok";
+      $("downloadBtn").disabled = rows.length === 0;
+      $("metricPeaks").textContent = rows.filter(r => r.assigned_label).length;
+      $("metricHigh").textContent = rows.filter(r => r.confidence === "high").length;
+      $("metricMedium").textContent = rows.filter(r => r.confidence === "medium").length;
+      $("metricLow").textContent = rows.filter(r => r.confidence === "low" || !r.assigned_label).length;
+      renderPreview("assignmentPreview",
+        ["experiment_key", "peak_id", "assigned_label", "assigned_anchor_residue", "assigned_source_residue", "assigned_source_atoms", "assigned_relation", "confidence", "notes"],
+        rows.slice(0, 250)
+      );
+      renderExperimentResults();
+      renderLegend();
+      renderPlot("plotHSQC", rows.filter(r => r.experiment_key === "HSQC" && r.HN !== null && r.N !== null), "HN", "N");
+      renderPlot("plotHNCACB", rows.filter(r => r.experiment_key === "HNCACB" && r.HN !== null && r.C !== null), "HN", "C");
+      renderPlot("plotCBCACONH", rows.filter(r => r.experiment_key === "CBCACONH" && r.HN !== null && r.C !== null), "HN", "C");
+    }
+
+    function renderExperimentResults() {
+      const root = $("experimentResults");
+      root.innerHTML = EXPERIMENTS.map(exp => {
+        const rows = state.perExperiment[exp.key] || [];
+        if (!rows.length) return "";
+        const headers = state.experiments[exp.key].headers;
+        const display = rows.map(row => ({
+          assigned_first_col: row.assigned_label,
+          ...row.original,
+          assigned_anchor_residue: row.assigned_anchor_residue,
+          assigned_source_residue: row.assigned_source_residue,
+          assigned_source_atoms: row.assigned_source_atoms,
+          confidence: row.confidence
+        }));
+        const id = `assigned-${exp.key}`;
+        setTimeout(() => renderPreview(id, ["assigned_first_col", ...headers, "assigned_anchor_residue", "assigned_source_residue", "assigned_source_atoms", "confidence"], display), 0);
+        return `<details><summary>${exp.title} (${rows.length})</summary><div><div class="table-wrap" id="${id}"></div></div></details>`;
+      }).join("");
+    }
+
+    function renderLegend() {
+      $("legend").innerHTML = Object.entries(CATEGORY).map(([name, data]) =>
+        `<span><i class="swatch" style="background:${data.color}"></i>${name}</span>`
+      ).join("");
+    }
+
+    function renderPlot(id, rows, xKey, yKey) {
+      const el = $(id);
+      const width = 480;
+      const height = 300;
+      const pad = { left: 52, right: 14, top: 12, bottom: 42 };
+      if (!rows.length) {
+        el.innerHTML = `<svg viewBox="0 0 ${width} ${height}" width="100%" height="300"><text x="24" y="40" fill="#66706b">No peaks loaded for this plot.</text></svg>`;
+        return;
+      }
+      const xs = rows.map(r => r[xKey]).filter(Number.isFinite);
+      const ys = rows.map(r => r[yKey]).filter(Number.isFinite);
+      const xMin = Math.min(...xs) - 0.2, xMax = Math.max(...xs) + 0.2;
+      const yMin = Math.min(...ys) - 1, yMax = Math.max(...ys) + 1;
+      const x = value => pad.left + (xMax - value) / (xMax - xMin || 1) * (width - pad.left - pad.right);
+      const y = value => pad.top + (yMax - value) / (yMax - yMin || 1) * (height - pad.top - pad.bottom);
+      const ticks = (min, max, n) => Array.from({ length: n }, (_, i) => min + (max - min) * i / (n - 1));
+      const xTicks = ticks(xMin, xMax, 5);
+      const yTicks = ticks(yMin, yMax, 5);
+      const circles = rows.map(row => {
+        const residue = state.sequence.find(r => r.label === row.assigned_anchor_residue);
+        const color = residue?.color || CATEGORY.Other.color;
+        const label = row.assigned_label || row.peak_id;
+        return `<g><circle cx="${x(row[xKey]).toFixed(1)}" cy="${y(row[yKey]).toFixed(1)}" r="4.5" fill="${color}" opacity="0.88"><title>${escapeHtml(label)}</title></circle><text x="${(x(row[xKey]) + 6).toFixed(1)}" y="${(y(row[yKey]) + 4).toFixed(1)}" font-size="10" fill="#34403b">${escapeHtml(row.assigned_anchor_residue || "")}</text></g>`;
+      }).join("");
+      el.innerHTML = `
+        <svg viewBox="0 0 ${width} ${height}" width="100%" height="300" role="img">
+          <rect x="0" y="0" width="${width}" height="${height}" fill="#fff"></rect>
+          <line x1="${pad.left}" y1="${height - pad.bottom}" x2="${width - pad.right}" y2="${height - pad.bottom}" stroke="#38423e"></line>
+          <line x1="${pad.left}" y1="${pad.top}" x2="${pad.left}" y2="${height - pad.bottom}" stroke="#38423e"></line>
+          ${xTicks.map(t => `<line x1="${x(t)}" y1="${height - pad.bottom}" x2="${x(t)}" y2="${height - pad.bottom + 5}" stroke="#38423e"></line><text x="${x(t)}" y="${height - 16}" text-anchor="middle" font-size="10" fill="#66706b">${t.toFixed(2)}</text>`).join("")}
+          ${yTicks.map(t => `<line x1="${pad.left - 5}" y1="${y(t)}" x2="${pad.left}" y2="${y(t)}" stroke="#38423e"></line><text x="${pad.left - 8}" y="${y(t) + 3}" text-anchor="end" font-size="10" fill="#66706b">${t.toFixed(1)}</text>`).join("")}
+          <text x="${width / 2}" y="${height - 3}" text-anchor="middle" font-size="11" fill="#34403b">${xKey} ppm (reversed)</text>
+          <text transform="translate(13 ${height / 2}) rotate(-90)" text-anchor="middle" font-size="11" fill="#34403b">${yKey} ppm (reversed)</text>
+          ${circles}
+        </svg>`;
+    }
+
+    function renderPreview(id, headers, rows) {
+      const el = $(id);
+      if (!headers.length || !rows.length) {
+        el.innerHTML = `<div class="tiny" style="padding:10px">No rows to preview.</div>`;
+        return;
+      }
+      el.innerHTML = `<table><thead><tr>${headers.map(h => `<th>${escapeHtml(h)}</th>`).join("")}</tr></thead><tbody>${
+        rows.map(row => `<tr>${headers.map(h => `<td>${escapeHtml(row[h] ?? "")}</td>`).join("")}</tr>`).join("")
+      }</tbody></table>`;
+    }
+
+    function downloadAssignedCsv() {
+      const rows = state.assignments;
+      if (!rows.length) return;
+      const originalHeaders = Array.from(new Set(EXPERIMENTS.flatMap(exp => state.experiments[exp.key].headers)));
+      const headers = ["experiment_key", "peak_id", "assigned_label", ...originalHeaders, "assigned_anchor_residue", "assigned_source_residue", "assigned_source_atoms", "assigned_relation", "confidence", "notes"];
+      const lines = [headers.join(",")];
+      for (const row of rows) {
+        const merged = {
+          experiment_key: row.experiment_key,
+          peak_id: row.peak_id,
+          assigned_label: row.assigned_label,
+          ...row.original,
+          assigned_anchor_residue: row.assigned_anchor_residue,
+          assigned_source_residue: row.assigned_source_residue,
+          assigned_source_atoms: row.assigned_source_atoms,
+          assigned_relation: row.assigned_relation,
+          confidence: row.confidence,
+          notes: row.notes
+        };
+        lines.push(headers.map(h => csvCell(merged[h] ?? "")).join(","));
+      }
+      const blob = new Blob([lines.join("\n") + "\n"], { type: "text/csv;charset=utf-8" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "assigned_peak_lists.csv";
+      a.click();
+      URL.revokeObjectURL(url);
+    }
+
+    function csvCell(value) {
+      const text = String(value ?? "");
+      return /[",\n]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text;
+    }
+
+    function escapeHtml(value) {
+      return String(value ?? "").replace(/[&<>"']/g, ch => ({
+        "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"
+      }[ch]));
+    }
+
+    function refreshStatus() {
+      const loaded = EXPERIMENTS.filter(exp => state.experiments[exp.key].rows.length).length;
+      const seq = state.sequence.length;
+      if (seq && loaded) setStatus(`<strong>${loaded}</strong> experiments loaded, <strong>${seq}</strong> residues confirmed. Ready to run.`, "ok");
+      else setStatus(`Loaded experiments: <strong>${loaded}</strong>. Confirmed residues: <strong>${seq}</strong>.`);
+    }
+
+    function clearAll() {
+      for (const key of Object.keys(state.experiments)) {
+        state.experiments[key] = { fileName: "", headers: [], rows: [], mapping: {} };
+      }
+      state.sequenceRaw = { headers: [], rows: [], mode: "" };
+      state.sequence = [];
+      state.assignments = [];
+      state.perExperiment = {};
+      $("seqPreview").innerHTML = "";
+      $("seqMessage").textContent = "";
+      $("seqBadge").textContent = "not loaded";
+      $("seqBadge").className = "badge";
+      $("assignmentPreview").innerHTML = "";
+      $("experimentResults").innerHTML = "";
+      $("plotHSQC").innerHTML = "";
+      $("plotHNCACB").innerHTML = "";
+      $("plotCBCACONH").innerHTML = "";
+      $("legend").innerHTML = "";
+      $("resultBadge").textContent = "not run";
+      $("resultBadge").className = "badge";
+      $("downloadBtn").disabled = true;
+      ["metricPeaks", "metricHigh", "metricMedium", "metricLow"].forEach(id => $(id).textContent = "0");
+      populateSequenceControls();
+      renderExperiments();
+      refreshStatus();
+    }
+
+    $("runBtn").addEventListener("click", runAssignment);
+    $("downloadBtn").addEventListener("click", downloadAssignedCsv);
+    $("clearBtn").addEventListener("click", clearAll);
+    setupSequence();
+    populateSequenceControls();
+    renderExperiments();
+    renderLegend();
+  </script>
+</body>
+</html>
