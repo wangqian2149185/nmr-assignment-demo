@@ -1029,7 +1029,7 @@
           assigned_source_atoms: Array.isArray(item.assigned_source_atoms) ? item.assigned_source_atoms.join(",") : (item.assigned_source_atoms || item.source_atoms || ""),
           assigned_relation: item.assigned_relation || item.relation || "",
           confidence: item.confidence || "medium",
-          notes: item.notes || "LLM assignment",
+          notes: item.notes || "",
           HN: row.HN_num ?? numberOrNull(item.HN),
           N: row.N_num ?? numberOrNull(item.N),
           C: row.C_num ?? numberOrNull(item.C),

@@ -10,7 +10,7 @@ loadEnv(path.join(ROOT, ".env"));
 const ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY || "";
 const ANTHROPIC_MODEL = process.env.ANTHROPIC_MODEL || "claude-sonnet-4-5";
 const ANTHROPIC_MAX_TOKENS = Number(process.env.ANTHROPIC_MAX_TOKENS || 24000);
-const ASSIGNMENT_BATCH_SIZE = Number(process.env.ASSIGNMENT_BATCH_SIZE || 80);
+const ASSIGNMENT_BATCH_SIZE = Number(process.env.ASSIGNMENT_BATCH_SIZE || 25);
 const MAX_BODY_BYTES = 8 * 1024 * 1024;
 
 function loadEnv(file) {
@@ -125,7 +125,7 @@ function buildPrompt(payload) {
     '      "assigned_source_atoms": "N,HN or N,CA,HN",',
     '      "assigned_relation": "intra or sequential_i_minus_1 or ambiguous",',
     '      "confidence": "high or medium or low or ambiguous",',
-    '      "notes": "brief evidence summary"',
+    '      "notes": "0-5 words"',
     "    }",
     "  ]",
     "}",
@@ -139,7 +139,9 @@ function buildPrompt(payload) {
     "- First residue is often absent from HSQC.",
     "- If a peak cannot be assigned confidently, keep residue fields blank and confidence low or ambiguous.",
     "- Do not include markdown, code fences, comments, prose, or explanations outside the JSON object.",
-    "- Keep notes short so the JSON can finish completely.",
+    "- Output compact JSON. Do not pretty-print. Do not add whitespace unless required by JSON syntax.",
+    "- Keep notes empty unless there is a critical warning. If used, notes must be 0-5 words.",
+    "- Prefer empty strings over explanatory text for uncertain fields.",
     `- This request may be one batch from a larger job. Assign only the rows present in INPUT_DATA_JSON for this request.`,
     "",
     "SKILL.md:",
