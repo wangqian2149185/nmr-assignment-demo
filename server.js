@@ -9,6 +9,8 @@ loadEnv(path.join(ROOT, ".env"));
 
 const ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY || "";
 const ANTHROPIC_MODEL = process.env.ANTHROPIC_MODEL || "claude-sonnet-4-5";
+const ANTHROPIC_MAX_TOKENS = Number(process.env.ANTHROPIC_MAX_TOKENS || 24000);
+const ASSIGNMENT_BATCH_SIZE = Number(process.env.ASSIGNMENT_BATCH_SIZE || 80);
 const MAX_BODY_BYTES = 8 * 1024 * 1024;
 
 function loadEnv(file) {
@@ -33,6 +35,10 @@ function sendJson(res, status, data) {
     "content-length": Buffer.byteLength(body)
   });
   res.end(body);
+}
+
+function sendNdjson(res, data) {
+  res.write(`${JSON.stringify(data)}\n`);
 }
 
 function serveStatic(req, res) {
@@ -87,7 +93,7 @@ function compactPayload(payload) {
     experiments[key] = {
       title: exp.title,
       mapping: exp.mapping,
-      normalized_rows: (exp.normalized_rows || []).slice(0, 800),
+      normalized_rows: exp.normalized_rows || [],
       row_count: (exp.normalized_rows || []).length
     };
   }
@@ -132,6 +138,9 @@ function buildPrompt(payload) {
     "- Proline has no normal backbone amide peak.",
     "- First residue is often absent from HSQC.",
     "- If a peak cannot be assigned confidently, keep residue fields blank and confidence low or ambiguous.",
+    "- Do not include markdown, code fences, comments, prose, or explanations outside the JSON object.",
+    "- Keep notes short so the JSON can finish completely.",
+    `- This request may be one batch from a larger job. Assign only the rows present in INPUT_DATA_JSON for this request.`,
     "",
     "SKILL.md:",
     skill,
@@ -143,13 +152,44 @@ function buildPrompt(payload) {
 
 function parseModelJson(text) {
   const trimmed = String(text || "").trim();
+  if (!trimmed) throw new Error("Model returned an empty response.");
   try {
     return JSON.parse(trimmed);
   } catch (_) {
-    const match = trimmed.match(/\{[\s\S]*\}/);
-    if (!match) throw new Error("Model did not return JSON.");
-    return JSON.parse(match[0]);
+    const fenced = trimmed.match(/```(?:json)?\s*([\s\S]*?)```/i);
+    if (fenced) return JSON.parse(fenced[1].trim());
+    const objectText = extractBalancedJsonObject(trimmed);
+    if (objectText) return JSON.parse(objectText);
+    throw new Error(`Model did not return JSON. Response started with: ${trimmed.slice(0, 220)}`);
   }
+}
+
+function extractBalancedJsonObject(text) {
+  const start = text.indexOf("{");
+  if (start === -1) return "";
+  let depth = 0;
+  let inString = false;
+  let escaped = false;
+  for (let i = start; i < text.length; i++) {
+    const ch = text[i];
+    if (escaped) {
+      escaped = false;
+      continue;
+    }
+    if (ch === "\\") {
+      escaped = true;
+      continue;
+    }
+    if (ch === '"') {
+      inString = !inString;
+      continue;
+    }
+    if (inString) continue;
+    if (ch === "{") depth += 1;
+    if (ch === "}") depth -= 1;
+    if (depth === 0) return text.slice(start, i + 1);
+  }
+  return "";
 }
 
 async function callAnthropic(payload) {
@@ -165,7 +205,7 @@ async function callAnthropic(payload) {
     },
     body: JSON.stringify({
       model: ANTHROPIC_MODEL,
-      max_tokens: 12000,
+      max_tokens: ANTHROPIC_MAX_TOKENS,
       temperature: 0,
       messages: [
         { role: "user", content: buildPrompt(payload) }
@@ -181,10 +221,166 @@ async function callAnthropic(payload) {
     .filter(part => part.type === "text")
     .map(part => part.text)
     .join("\n");
+  if (data.stop_reason === "max_tokens") {
+    throw new Error(`Model output hit the ${ANTHROPIC_MAX_TOKENS} token limit before completing JSON. Try fewer peak-list rows or raise ANTHROPIC_MAX_TOKENS in .env.`);
+  }
   const parsed = parseModelJson(text);
   return {
     engine: `anthropic:${ANTHROPIC_MODEL}`,
+    usage: data.usage || {},
     assignments: Array.isArray(parsed.assignments) ? parsed.assignments : []
+  };
+}
+
+async function callAnthropicStream(payload, onEvent) {
+  if (!ANTHROPIC_API_KEY) {
+    throw new Error("Missing ANTHROPIC_API_KEY. Copy .env.example to .env and add your key.");
+  }
+  const response = await fetch("https://api.anthropic.com/v1/messages", {
+    method: "POST",
+    headers: {
+      "content-type": "application/json",
+      "x-api-key": ANTHROPIC_API_KEY,
+      "anthropic-version": "2023-06-01"
+    },
+    body: JSON.stringify({
+      model: ANTHROPIC_MODEL,
+      max_tokens: ANTHROPIC_MAX_TOKENS,
+      temperature: 0,
+      stream: true,
+      messages: [
+        { role: "user", content: buildPrompt(payload) }
+      ]
+    })
+  });
+  if (!response.ok) {
+    const data = await response.json().catch(() => ({}));
+    const message = data.error?.message || `Anthropic API returned HTTP ${response.status}.`;
+    throw new Error(message);
+  }
+
+  const decoder = new TextDecoder();
+  let buffer = "";
+  let text = "";
+  let usage = {};
+  let stopReason = "";
+
+  function mergeUsage(next) {
+    if (!next) return;
+    usage = { ...usage, ...next };
+    onEvent({ type: "usage", usage });
+  }
+
+  for await (const chunk of response.body) {
+    buffer += decoder.decode(chunk, { stream: true });
+    const events = buffer.split(/\n\n/);
+    buffer = events.pop() || "";
+    for (const eventText of events) {
+      const dataLine = eventText.split(/\n/).find(line => line.startsWith("data: "));
+      if (!dataLine) continue;
+      const event = JSON.parse(dataLine.slice(6));
+      if (event.type === "message_start") {
+        mergeUsage(event.message?.usage);
+      } else if (event.type === "content_block_delta" && event.delta?.type === "text_delta") {
+        text += event.delta.text || "";
+      } else if (event.type === "message_delta") {
+        stopReason = event.delta?.stop_reason || stopReason;
+        mergeUsage(event.usage);
+      } else if (event.type === "error") {
+        throw new Error(event.error?.message || "Anthropic stream returned an error.");
+      }
+    }
+  }
+
+  if (buffer.trim()) {
+    for (const eventText of buffer.split(/\n\n/)) {
+      const dataLine = eventText.split(/\n/).find(line => line.startsWith("data: "));
+      if (!dataLine) continue;
+      const event = JSON.parse(dataLine.slice(6));
+      if (event.type === "content_block_delta" && event.delta?.type === "text_delta") {
+        text += event.delta.text || "";
+      } else if (event.type === "message_delta") {
+        stopReason = event.delta?.stop_reason || stopReason;
+        mergeUsage(event.usage);
+      }
+    }
+  }
+
+  if (stopReason === "max_tokens") {
+    throw new Error(`Model output hit the ${ANTHROPIC_MAX_TOKENS} token limit before completing JSON. Try fewer peak-list rows or raise ANTHROPIC_MAX_TOKENS in .env.`);
+  }
+  const parsed = parseModelJson(text);
+  return {
+    engine: `anthropic:${ANTHROPIC_MODEL}`,
+    usage,
+    assignments: Array.isArray(parsed.assignments) ? parsed.assignments : []
+  };
+}
+
+function buildAssignmentBatches(payload) {
+  const batches = [];
+  for (const [key, exp] of Object.entries(payload.experiments || {})) {
+    const rows = exp.normalized_rows || [];
+    if (!rows.length) continue;
+    for (let start = 0; start < rows.length; start += ASSIGNMENT_BATCH_SIZE) {
+      batches.push({
+        sequence: payload.sequence || [],
+        experiments: {
+          [key]: {
+            title: exp.title,
+            mapping: exp.mapping,
+            normalized_rows: rows.slice(start, start + ASSIGNMENT_BATCH_SIZE)
+          }
+        },
+        batch: {
+          experiment_key: key,
+          start_row: start + 1,
+          end_row: Math.min(start + ASSIGNMENT_BATCH_SIZE, rows.length),
+          row_count: rows.length
+        }
+      });
+    }
+  }
+  return batches;
+}
+
+function addUsage(total, next) {
+  for (const [key, value] of Object.entries(next || {})) {
+    if (typeof value === "number") total[key] = (total[key] || 0) + value;
+  }
+  return total;
+}
+
+async function callAnthropicBatchedStream(payload, onEvent) {
+  const batches = buildAssignmentBatches(payload);
+  if (!batches.length) {
+    return { engine: `anthropic:${ANTHROPIC_MODEL}`, usage: {}, assignments: [] };
+  }
+  const usage = {};
+  const assignments = [];
+  for (let index = 0; index < batches.length; index += 1) {
+    onEvent({ type: "progress", batch_index: index + 1, batch_count: batches.length, batch: batches[index].batch });
+    let previousUsage = {};
+    const result = await callAnthropicStream(batches[index], event => {
+      if (event.type !== "usage") {
+        onEvent(event);
+        return;
+      }
+      const delta = {};
+      for (const [key, value] of Object.entries(event.usage || {})) {
+        if (typeof value === "number") delta[key] = value - (previousUsage[key] || 0);
+      }
+      previousUsage = event.usage || {};
+      addUsage(usage, delta);
+      onEvent({ type: "usage", usage });
+    });
+    assignments.push(...result.assignments);
+    onEvent({ type: "progress", batch_index: index + 1, batch_count: batches.length, completed: true, batch: batches[index].batch });
+  }
+  return {
+    engine: `anthropic:${ANTHROPIC_MODEL}`,
+    usage,
+    assignments
   };
 }
 
@@ -202,8 +398,18 @@ const server = http.createServer(async (req, res) => {
     if (req.method === "POST" && req.url === "/api/assign") {
       const body = await readBody(req);
       const payload = JSON.parse(body || "{}");
-      const result = await callAnthropic(payload);
-      sendJson(res, 200, result);
+      res.writeHead(200, {
+        "content-type": "application/x-ndjson; charset=utf-8",
+        "cache-control": "no-store"
+      });
+      try {
+        const result = await callAnthropicBatchedStream(payload, event => sendNdjson(res, event));
+        sendNdjson(res, { type: "result", ...result });
+      } catch (error) {
+        sendNdjson(res, { type: "error", error: error.message || String(error) });
+      } finally {
+        res.end();
+      }
       return;
     }
     if (req.method === "GET" || req.method === "HEAD") {

@@ -308,21 +308,28 @@
       .result-layout { grid-template-columns: 1fr; }
     }
 
-    .plots {
+    .plot-grid {
       display: grid;
       gap: 12px;
     }
 
-    .plot {
+    .plot-card {
       border: 1px solid var(--line);
       border-radius: 8px;
       background: #fff;
-      padding: 10px;
+      overflow: hidden;
     }
 
-    .plot h3 {
-      margin: 0 0 6px;
+    .plot-card h3 {
+      margin: 0;
+      padding: 10px 12px;
       font-size: 13px;
+      border-bottom: 1px solid var(--line);
+      background: #fcfcfa;
+    }
+
+    .plot-card .plot-body {
+      padding: 10px;
     }
 
     .legend {
@@ -367,12 +374,8 @@
 
     .metric-grid {
       display: grid;
-      grid-template-columns: repeat(4, minmax(0, 1fr));
+      grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
       gap: 8px;
-    }
-
-    @media (max-width: 800px) {
-      .metric-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
     }
 
     .metric {
@@ -460,16 +463,19 @@
           <div class="metric"><b id="metricHigh">0</b><span>high confidence</span></div>
           <div class="metric"><b id="metricMedium">0</b><span>medium confidence</span></div>
           <div class="metric"><b id="metricLow">0</b><span>low or blank</span></div>
+          <div class="metric"><b id="metricTokensTotal">0</b><span>tokens used</span></div>
+          <div class="metric"><b id="metricTokensInput">0</b><span>input tokens</span></div>
+          <div class="metric"><b id="metricTokensOutput">0</b><span>output tokens</span></div>
         </div>
         <div class="result-layout">
           <div>
             <div class="table-wrap" id="assignmentPreview"></div>
           </div>
-          <div class="plots">
+          <div class="plot-grid">
             <div class="legend" id="legend"></div>
-            <div class="plot"><h3>HSQC: HN vs N</h3><div id="plotHSQC"></div></div>
-            <div class="plot"><h3>HNCACB: HN vs Cx</h3><div id="plotHNCACB"></div></div>
-            <div class="plot"><h3>HN(CO)CACB / CBCA(CO)NH: HN vs Cx</h3><div id="plotCBCACONH"></div></div>
+            <section class="plot-card"><h3>HSQC: HN vs N</h3><div class="plot-body" id="plotHSQC"></div></section>
+            <section class="plot-card"><h3>HNCACB: HN vs Cx</h3><div class="plot-body" id="plotHNCACB"></div></section>
+            <section class="plot-card"><h3>HN(CO)CACB / CBCA(CO)NH: HN vs Cx</h3><div class="plot-body" id="plotCBCACONH"></div></section>
           </div>
         </div>
         <div class="inspector" id="experimentResults"></div>
@@ -523,8 +529,12 @@
       sequence: [],
       assignments: [],
       perExperiment: {},
-      lastEngine: ""
+      lastEngine: "",
+      tokenUsage: {}
     };
+
+    let assignButtonTimer = null;
+    let assignButtonFrame = 0;
 
     const $ = id => document.getElementById(id);
 
@@ -552,15 +562,29 @@
       const delimiter = inferDelimiter(lines[0]);
       const records = lines.map(line => splitCsvLine(line, delimiter));
       const first = records[0] || [];
-      const hasHeader = first.some(cell => /[A-Za-z_]/.test(cell)) && !first.every(cell => isFiniteNumber(cell));
+      const hasHeader = isHeaderRecord(first);
       const headers = hasHeader ? first.map((h, i) => h.trim() || `col${i + 1}`) : first.map((_, i) => `col${i + 1}`);
-      const data = hasHeader ? records.slice(1) : records;
+      const data = (hasHeader ? records.slice(1) : records).filter(record => !isHeaderRecord(record));
       const rows = data.map(record => {
         const row = {};
         headers.forEach((h, i) => row[h] = (record[i] ?? "").trim());
         return row;
       });
       return { headers, rows };
+    }
+
+    function isHeaderRecord(record) {
+      const cells = record.map(cell => String(cell || "").trim()).filter(Boolean);
+      if (!cells.length) return false;
+      const normalized = cells.map(cell => cell.toLowerCase().replace(/[^a-z0-9]/g, ""));
+      const headerWords = new Set([
+        "assignment", "assign", "peak", "peakid", "id", "label",
+        "w1", "w2", "w3", "w4", "hn", "h", "n", "nppm", "15n",
+        "ca", "cb", "cx", "co", "dataheight", "height", "volume", "intensity", "sign"
+      ]);
+      const headerHits = normalized.filter(cell => headerWords.has(cell)).length;
+      const numericCells = cells.filter(isFiniteNumber).length;
+      return headerHits >= 2 || (headerHits >= 1 && numericCells === 0 && cells.some(cell => /[A-Za-z_]/.test(cell)));
     }
 
     function inferDelimiter(line) {
@@ -860,28 +884,91 @@
         return;
       }
       $("runBtn").disabled = true;
-      $("runBtn").textContent = "Assigning...";
-      setStatus("Sending mapped peak lists to local LLM backend. This may take a minute.", "warn");
+      state.tokenUsage = {};
+      renderTokenUsage();
+      startAssignButtonAnimation();
+      setStatus("Sending mapped peak lists to local LLM backend. Token usage will update as the model responds.", "warn");
       try {
         const response = await fetch("/api/assign", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(buildAssignmentPayload())
         });
-        const data = await response.json().catch(() => ({}));
         if (!response.ok) {
+          const data = await response.json().catch(() => ({}));
           throw new Error(data.error || `LLM backend returned HTTP ${response.status}.`);
         }
+        const data = await readAssignmentStream(response);
         applyLLMResult(data.assignments || []);
         state.lastEngine = data.engine || "llm";
+        state.tokenUsage = data.usage || state.tokenUsage;
         renderResults();
-        setStatus(`<strong>LLM assignment complete.</strong> Review confidence, notes, and plots before downloading.`, "ok");
+        setStatus(`<strong>LLM assignment complete.</strong> Used ${formatNumber(totalTokens(state.tokenUsage))} tokens. Review confidence, notes, and plots before downloading.`, "ok");
       } catch (error) {
         setStatus(`LLM assignment failed: ${escapeHtml(error.message)}. Confirm the local server is running with an API key, or switch to Browser heuristic mode.`, "error");
       } finally {
+        stopAssignButtonAnimation();
         $("runBtn").disabled = false;
         $("runBtn").textContent = "Run assignment";
       }
+    }
+
+    async function readAssignmentStream(response) {
+      const reader = response.body?.getReader();
+      if (!reader) return response.json();
+      const decoder = new TextDecoder();
+      let buffer = "";
+      let result = null;
+      while (true) {
+        const { value, done } = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split("\n");
+        buffer = lines.pop() || "";
+        for (const line of lines) {
+          if (!line.trim()) continue;
+          const event = JSON.parse(line);
+          if (event.type === "usage") {
+            state.tokenUsage = event.usage || {};
+            renderTokenUsage();
+            setStatus(`Assigning with LLM backend. Tokens used so far: <strong>${formatNumber(totalTokens(state.tokenUsage))}</strong>.`, "warn");
+          } else if (event.type === "progress") {
+            const batchText = event.batch_count ? `batch ${event.batch_index} of ${event.batch_count}` : "next batch";
+            const expText = event.batch?.experiment_key ? ` for ${escapeHtml(event.batch.experiment_key)}` : "";
+            setStatus(`Assigning ${batchText}${expText}. Tokens used so far: <strong>${formatNumber(totalTokens(state.tokenUsage))}</strong>.`, "warn");
+          } else if (event.type === "result") {
+            result = event;
+          } else if (event.type === "error") {
+            throw new Error(event.error || "LLM backend stream failed.");
+          }
+        }
+      }
+      if (buffer.trim()) {
+        const event = JSON.parse(buffer);
+        if (event.type === "result") result = event;
+      }
+      if (!result) throw new Error("LLM backend finished without returning assignments.");
+      return result;
+    }
+
+    function startAssignButtonAnimation() {
+      const frames = [
+        "Assign --",
+        "Assign \\",
+        "Assign |",
+        "Assign /"
+      ];
+      assignButtonFrame = 0;
+      $("runBtn").textContent = frames[assignButtonFrame];
+      assignButtonTimer = setInterval(() => {
+        assignButtonFrame = (assignButtonFrame + 1) % frames.length;
+        $("runBtn").textContent = frames[assignButtonFrame];
+      }, 150);
+    }
+
+    function stopAssignButtonAnimation() {
+      if (assignButtonTimer) clearInterval(assignButtonTimer);
+      assignButtonTimer = null;
     }
 
     function buildAssignmentPayload() {
@@ -966,6 +1053,8 @@
     function runHeuristicAssignment() {
       state.assignments = [];
       state.perExperiment = {};
+      state.tokenUsage = {};
+      renderTokenUsage();
       if (!state.sequence.length) {
         setStatus("Confirm a valid protein sequence first.", "error");
         return;
@@ -1150,6 +1239,7 @@
       $("metricHigh").textContent = rows.filter(r => r.confidence === "high").length;
       $("metricMedium").textContent = rows.filter(r => r.confidence === "medium").length;
       $("metricLow").textContent = rows.filter(r => r.confidence === "low" || !r.assigned_label).length;
+      renderTokenUsage();
       renderPreview("assignmentPreview",
         ["experiment_key", "peak_id", "assigned_label", "assigned_anchor_residue", "assigned_source_residue", "assigned_source_atoms", "assigned_relation", "confidence", "notes"],
         rows.slice(0, 250)
@@ -1159,6 +1249,28 @@
       renderPlot("plotHSQC", rows.filter(r => r.experiment_key === "HSQC" && r.HN !== null && r.N !== null), "HN", "N");
       renderPlot("plotHNCACB", rows.filter(r => r.experiment_key === "HNCACB" && r.HN !== null && r.C !== null), "HN", "C");
       renderPlot("plotCBCACONH", rows.filter(r => r.experiment_key === "CBCACONH" && r.HN !== null && r.C !== null), "HN", "C");
+    }
+
+    function renderTokenUsage() {
+      const usage = state.tokenUsage || {};
+      const input = Number(usage.input_tokens || 0)
+        + Number(usage.cache_creation_input_tokens || 0)
+        + Number(usage.cache_read_input_tokens || 0);
+      const output = Number(usage.output_tokens || 0);
+      $("metricTokensInput").textContent = formatNumber(input);
+      $("metricTokensOutput").textContent = formatNumber(output);
+      $("metricTokensTotal").textContent = formatNumber(input + output);
+    }
+
+    function totalTokens(usage) {
+      return Number(usage?.input_tokens || 0)
+        + Number(usage?.cache_creation_input_tokens || 0)
+        + Number(usage?.cache_read_input_tokens || 0)
+        + Number(usage?.output_tokens || 0);
+    }
+
+    function formatNumber(value) {
+      return new Intl.NumberFormat("en-US").format(Number(value || 0));
     }
 
     function renderExperimentResults() {
@@ -1218,8 +1330,8 @@
           <line x1="${pad.left}" y1="${pad.top}" x2="${pad.left}" y2="${height - pad.bottom}" stroke="#38423e"></line>
           ${xTicks.map(t => `<line x1="${x(t)}" y1="${height - pad.bottom}" x2="${x(t)}" y2="${height - pad.bottom + 5}" stroke="#38423e"></line><text x="${x(t)}" y="${height - 16}" text-anchor="middle" font-size="10" fill="#66706b">${t.toFixed(2)}</text>`).join("")}
           ${yTicks.map(t => `<line x1="${pad.left - 5}" y1="${y(t)}" x2="${pad.left}" y2="${y(t)}" stroke="#38423e"></line><text x="${pad.left - 8}" y="${y(t) + 3}" text-anchor="end" font-size="10" fill="#66706b">${t.toFixed(1)}</text>`).join("")}
-          <text x="${width / 2}" y="${height - 3}" text-anchor="middle" font-size="11" fill="#34403b">${xKey} ppm (reversed)</text>
-          <text transform="translate(13 ${height / 2}) rotate(-90)" text-anchor="middle" font-size="11" fill="#34403b">${yKey} ppm (reversed)</text>
+          <text x="${width / 2}" y="${height - 3}" text-anchor="middle" font-size="11" fill="#34403b">${xKey} ppm (larger right to left)</text>
+          <text transform="translate(13 ${height / 2}) rotate(-90)" text-anchor="middle" font-size="11" fill="#34403b">${yKey} ppm (larger bottom to top)</text>
           ${circles}
         </svg>`;
     }
@@ -1291,6 +1403,7 @@
       state.sequence = [];
       state.assignments = [];
       state.perExperiment = {};
+      state.tokenUsage = {};
       $("seqPreview").innerHTML = "";
       $("seqMessage").textContent = "";
       $("seqBadge").textContent = "not loaded";
@@ -1304,7 +1417,7 @@
       $("resultBadge").textContent = "not run";
       $("resultBadge").className = "badge";
       $("downloadBtn").disabled = true;
-      ["metricPeaks", "metricHigh", "metricMedium", "metricLow"].forEach(id => $(id).textContent = "0");
+      ["metricPeaks", "metricHigh", "metricMedium", "metricLow", "metricTokensTotal", "metricTokensInput", "metricTokensOutput"].forEach(id => $(id).textContent = "0");
       populateSequenceControls();
       renderExperiments();
       refreshStatus();
@@ -1317,6 +1430,7 @@
     populateSequenceControls();
     renderExperiments();
     renderLegend();
+    renderTokenUsage();
   </script>
 </body>
 </html>
