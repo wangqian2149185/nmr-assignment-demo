@@ -136,16 +136,19 @@ function buildFragmentValidationPrompt(payload, fragments, iteration, batchIndex
     "The app grouped peaks by matching HN/N and linked pseudo residues with i-1 Cx evidence.",
     "Decide whether each fragment can be a contiguous part of the uploaded protein sequence.",
     "Use conservative chemical-shift reasoning: HN, N, intra Cx, i-1 Cx, Gly N 90-110 and no CB, Ser/Thr high CB, Ala low CB, Pro amide gaps.",
-    "Return ONLY compact JSON. Use this short-key schema:",
-    "{\"p\":[{\"f\":\"F001\",\"s\":31,\"c\":\"h|m|l\",\"m\":{\"R001\":\"E31\"}}],\"x\":[{\"a\":\"R001\",\"b\":\"R002\"}]}",
+    "Return ONLY plain text line protocol. No JSON.",
+    "Placement line format: F001|31|m|R001:E31,R002:G32",
+    "Rejected link line format: !R001>R002",
+    "If there is no confident placement or rejected link, return exactly: NONE",
     "Rules:",
-    "- p means accepted placements; f=fragment_id, s=start sequence index, c=confidence, m=temp_id to residue_label map.",
-    "- x means rejected links; a=from_temp_id, b=to_temp_id.",
+    "- Placement columns are fragment_id|start sequence index|confidence|temp_id:residue_label pairs.",
+    "- Confidence is h, m, or l.",
+    "- Use one placement or rejected-link line per result.",
     "- Omit uncertain fragments instead of explaining them.",
     "- Include only confident or useful placements. Do not return every fragment.",
-    "- No notes, no mismatches, no prose, no markdown.",
+    "- No notes, no mismatches, no prose, no markdown, no code fences.",
     "- Keep output under 2000 tokens.",
-    "- No markdown. No prose outside JSON.",
+    "- Do not output field names.",
     "SKILL_CONTEXT:",
     skill,
     "INPUT_JSON:",
@@ -196,6 +199,22 @@ function extractBalancedJsonObject(text) {
 }
 
 async function callAnthropicPromptStream(prompt, onEvent, signal, maxTokens = ANTHROPIC_MAX_TOKENS) {
+  const result = await callAnthropicTextStream(prompt, onEvent, signal, maxTokens);
+  const parsed = parseModelJson(result.text);
+  return {
+    engine: result.engine,
+    usage: result.usage,
+    assignments: Array.isArray(parsed.assignments) ? parsed.assignments : [],
+    residue_assignment_map: Array.isArray(parsed.residue_assignment_map) ? parsed.residue_assignment_map : [],
+    placements: Array.isArray(parsed.placements) ? parsed.placements : [],
+    rejected_links: Array.isArray(parsed.rejected_links) ? parsed.rejected_links : [],
+    p: Array.isArray(parsed.p) ? parsed.p : [],
+    x: Array.isArray(parsed.x) ? parsed.x : [],
+    notes: parsed.notes || ""
+  };
+}
+
+async function callAnthropicTextStream(prompt, onEvent, signal, maxTokens = ANTHROPIC_MAX_TOKENS) {
   if (!ANTHROPIC_API_KEY) {
     throw new Error("Missing ANTHROPIC_API_KEY. Copy .env.example to .env and add your key.");
   }
@@ -271,19 +290,12 @@ async function callAnthropicPromptStream(prompt, onEvent, signal, maxTokens = AN
   }
 
   if (stopReason === "max_tokens") {
-    throw new Error(`Model output hit the ${maxTokens} token limit before completing JSON. Try lowering FRAGMENT_VALIDATION_BATCH_SIZE or raising FRAGMENT_VALIDATION_MAX_TOKENS in .env.`);
+    throw new Error(`Model output hit the ${maxTokens} token limit. Try lowering FRAGMENT_VALIDATION_BATCH_SIZE or raising FRAGMENT_VALIDATION_MAX_TOKENS in .env.`);
   }
-  const parsed = parseModelJson(text);
   return {
     engine: `anthropic:${ANTHROPIC_MODEL}`,
     usage,
-    assignments: Array.isArray(parsed.assignments) ? parsed.assignments : [],
-    residue_assignment_map: Array.isArray(parsed.residue_assignment_map) ? parsed.residue_assignment_map : [],
-    placements: Array.isArray(parsed.placements) ? parsed.placements : [],
-    rejected_links: Array.isArray(parsed.rejected_links) ? parsed.rejected_links : [],
-    p: Array.isArray(parsed.p) ? parsed.p : [],
-    x: Array.isArray(parsed.x) ? parsed.x : [],
-    notes: parsed.notes || ""
+    text
   };
 }
 
@@ -514,6 +526,48 @@ function normalizeFragmentValidationResult(result) {
   return { placements, rejected_links };
 }
 
+function parseFragmentLineProtocol(text) {
+  const placements = [];
+  const rejected_links = [];
+  const cleaned = String(text || "")
+    .replace(/```(?:text)?/gi, "")
+    .replace(/```/g, "")
+    .trim();
+  if (!cleaned || /^NONE$/i.test(cleaned)) return { placements, rejected_links };
+
+  for (const rawLine of cleaned.split(/\r?\n/)) {
+    const line = rawLine.trim();
+    if (!line || /^NONE$/i.test(line)) continue;
+    if (line.startsWith("!")) {
+      const match = line.match(/^!?\s*([A-Za-z]\d+)\s*>\s*([A-Za-z]\d+)/);
+      if (match) {
+        rejected_links.push({
+          from_temp_id: match[1].toUpperCase(),
+          to_temp_id: match[2].toUpperCase()
+        });
+      }
+      continue;
+    }
+    const parts = line.split("|").map(part => part.trim());
+    if (parts.length < 4) continue;
+    const [fragmentId, startIndex, confidenceRaw, mappingText] = parts;
+    const residueMap = {};
+    for (const pair of mappingText.split(",")) {
+      const [tempId, residueLabel] = pair.split(":").map(value => String(value || "").trim().toUpperCase());
+      if (/^R\d+$/i.test(tempId) && /^[A-Z]\d+$/i.test(residueLabel)) residueMap[tempId] = residueLabel;
+    }
+    if (!fragmentId || !Object.keys(residueMap).length) continue;
+    const c = confidenceRaw.toLowerCase()[0] || "m";
+    placements.push({
+      fragment_id: fragmentId,
+      start_index: Number(startIndex) || "",
+      confidence: c === "h" ? "high" : c === "l" ? "low" : "medium",
+      residue_labels_by_temp_id: residueMap
+    });
+  }
+  return { placements, rejected_links };
+}
+
 function placementMapFromFeedback(feedback) {
   const out = new Map();
   for (const item of feedback || []) {
@@ -529,17 +583,18 @@ function placementMapFromFeedback(feedback) {
 }
 
 function compactFeedbackForPrompt(feedback) {
-  return (feedback || []).map(item => ({
-    p: (item.placements || []).map(placement => ({
-      f: placement.fragment_id || "",
-      c: placement.confidence || "",
-      m: placement.residue_labels_by_temp_id || {}
-    })),
-    x: (item.rejected_links || []).map(link => ({
-      a: link.from_temp_id || "",
-      b: link.to_temp_id || ""
-    }))
-  }));
+  const lines = [];
+  for (const item of feedback || []) {
+    for (const placement of item.placements || []) {
+      const c = String(placement.confidence || "medium")[0].toLowerCase();
+      const pairs = Object.entries(placement.residue_labels_by_temp_id || {}).map(([tempId, residueLabel]) => `${tempId}:${residueLabel}`).join(",");
+      if (placement.fragment_id && pairs) lines.push(`${placement.fragment_id}|${placement.start_index || ""}|${c}|${pairs}`);
+    }
+    for (const link of item.rejected_links || []) {
+      if (link.from_temp_id && link.to_temp_id) lines.push(`!${link.from_temp_id}>${link.to_temp_id}`);
+    }
+  }
+  return lines.join("\n") || "NONE";
 }
 
 function seedPlacementMap(payload, terms) {
@@ -598,7 +653,7 @@ async function validateFragmentsWithLLM(payload, terms, onEvent, signal) {
     for (let batchIndex = 0; batchIndex < batches.length; batchIndex += 1) {
       onEvent({ type: "progress", stage: "fragment_batch", iteration, batch_index: batchIndex + 1, batch_count: batches.length, fragment_count: batches[batchIndex].length });
       let previousUsage = {};
-      const result = await callAnthropicPromptStream(buildFragmentValidationPrompt(payload, compactFragmentsForLLM(batches[batchIndex]), iteration, batchIndex + 1, compactFeedbackForPrompt(feedback)), event => {
+      const result = await callAnthropicTextStream(buildFragmentValidationPrompt(payload, compactFragmentsForLLM(batches[batchIndex]), iteration, batchIndex + 1, compactFeedbackForPrompt(feedback)), event => {
         if (event.type !== "usage") return onEvent(event);
         const delta = {};
         for (const [key, value] of Object.entries(event.usage || {})) {
@@ -608,7 +663,7 @@ async function validateFragmentsWithLLM(payload, terms, onEvent, signal) {
         addUsage(usage, delta);
         onEvent({ type: "usage", usage });
       }, signal, FRAGMENT_VALIDATION_MAX_TOKENS);
-      const parsed = normalizeFragmentValidationResult(result);
+      const parsed = parseFragmentLineProtocol(result.text);
       rejectedThisIteration += parsed.rejected_links.length;
       feedback.push(parsed);
       placements = placementMapFromFeedback(feedback);

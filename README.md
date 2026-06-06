@@ -133,6 +133,8 @@ Fragment validation is batched so the model does not hit output-token limits. Us
 
 If the model still hits `max_tokens`, lower `FRAGMENT_VALIDATION_BATCH_SIZE` to `2` before raising token limits.
 
+The fragment-validation LLM output uses a compact plain-text line protocol, not JSON, for example `F001|31|m|R001:E31,R002:G32` and `!R002>R003`. The backend parses those lines back into internal JSON objects.
+
 ## Default Tolerances
 
 The app and `skill.md` use two-stage tolerances:
