@@ -13,6 +13,13 @@ nmr-assignment-demo/
   index.html
   server.js
   skill.md
+  skills/
+    stage_1_column_mapping.md
+    stage_2_anchor_selection.md
+    stage_3_residue_map.md
+    stage_4_apply_peak_labels.md
+    stage_5_refine_ambiguous.md
+    stage_6_validation.md
   package.json
   .env.example
   .gitignore
@@ -59,7 +66,7 @@ http://localhost:8765
 - Shows uploaded peak lists immediately as tables.
 - Lets the user map columns to dimensions such as `HN`, `Hx`, `N`, `CA`, `CO`, and `Cx`.
 - Lets the user upload a protein sequence as FASTA, one-letter text, or tabular index/residue columns.
-- Sends the mapped data plus `skill.md` to the local backend.
+- Sends the mapped data plus only the relevant stage skills to the local backend.
 - The backend calls Anthropic with the user's own API key.
 - The backend first asks the LLM for a compact `residue_assignment_map`, then fills all peak-list rows programmatically.
 - Only low-confidence or blank rows are sent to a small second refinement prompt.
@@ -104,6 +111,18 @@ The app avoids asking the LLM to write one JSON row for every peak. That was exp
 
 This reduces token use and keeps the global backbone-walk context intact.
 
+## Skill Files
+
+`skill.md` is now a short controller skill. Detailed instructions are split into six stage-specific files in `skills/`.
+
+The backend loads only the needed sub-skills for each LLM call:
+
+- Residue-map call: controller + stage 2 + stage 3
+- Programmatic fill: stage 4 is implemented in server logic
+- Ambiguous refinement call: controller + stage 5 + stage 6
+
+This keeps input tokens smaller than sending one large all-purpose skill every time.
+
 ## Default Tolerances
 
 The app and `skill.md` use two-stage tolerances:
@@ -121,4 +140,4 @@ The loose set is used to collect possible correlation peaks. The tight set is us
 
 ## Current Scope
 
-This app does not run SkillOpt training. SkillOpt was used earlier to improve and evaluate the `skill.md`. This app uses that skill at runtime: the uploaded peak lists and sequence are sent to an LLM together with `skill.md`, and the LLM returns assignment rows.
+This app does not run SkillOpt training. SkillOpt was used earlier to improve and evaluate the assignment instructions. This app uses the staged skill files at runtime: the uploaded peak lists and sequence are sent to an LLM together with only the relevant stage instructions, and the LLM returns a compact residue map or refined assignment rows.

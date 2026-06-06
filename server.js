@@ -54,6 +54,23 @@ function sendNdjson(res, data) {
   res.write(`${JSON.stringify(data)}\n`);
 }
 
+function readTextIfExists(file, fallback = "") {
+  return fs.existsSync(file) ? fs.readFileSync(file, "utf8") : fallback;
+}
+
+function loadStageSkills(stageFiles) {
+  const controller = readTextIfExists(
+    path.join(ROOT, "skill.md"),
+    "NMR assignment controller: assign conservatively and use staged sub-skills."
+  );
+  const parts = [`# Controller skill\n${controller}`];
+  for (const fileName of stageFiles) {
+    const file = path.join(ROOT, "skills", fileName);
+    parts.push(`# ${fileName}\n${readTextIfExists(file, "")}`);
+  }
+  return parts.join("\n\n");
+}
+
 function serveStatic(req, res) {
   const url = new URL(req.url, `http://${req.headers.host || "localhost"}`);
   let pathname = decodeURIComponent(url.pathname);
@@ -117,10 +134,11 @@ function compactPayload(payload) {
 }
 
 function buildPrompt(payload) {
-  const skillPath = path.join(ROOT, "skill.md");
-  const skill = fs.existsSync(skillPath)
-    ? fs.readFileSync(skillPath, "utf8")
-    : "Assign protein NMR peak lists conservatively.";
+  const skill = loadStageSkills([
+    "stage_4_apply_peak_labels.md",
+    "stage_5_refine_ambiguous.md",
+    "stage_6_validation.md"
+  ]);
   const data = compactPayload(payload);
   return [
     "You are assigning protein NMR peak lists for a local app.",
@@ -158,7 +176,7 @@ function buildPrompt(payload) {
     "- Prefer empty strings over explanatory text for uncertain fields.",
     `- This request may be one batch from a larger job. Assign only the rows present in INPUT_DATA_JSON for this request.`,
     "",
-    "SKILL.md:",
+    "SKILL_CONTEXT:",
     skill,
     "",
     "INPUT_DATA_JSON:",
@@ -167,10 +185,10 @@ function buildPrompt(payload) {
 }
 
 function buildResidueMapPrompt(payload) {
-  const skillPath = path.join(ROOT, "skill.md");
-  const skill = fs.existsSync(skillPath)
-    ? fs.readFileSync(skillPath, "utf8")
-    : "Assign protein NMR peak lists conservatively.";
+  const skill = loadStageSkills([
+    "stage_2_anchor_selection.md",
+    "stage_3_residue_map.md"
+  ]);
   const data = compactPayload(payload);
   return [
     "You are assigning protein NMR backbone peak lists.",
@@ -207,7 +225,7 @@ function buildResidueMapPrompt(payload) {
     "- Leave uncertain anchors out of the map or mark confidence low/ambiguous.",
     "- Keep JSON compact. No markdown. No prose outside JSON.",
     "",
-    "SKILL.md:",
+    "SKILL_CONTEXT:",
     skill,
     "",
     "INPUT_DATA_JSON:",
@@ -216,6 +234,10 @@ function buildResidueMapPrompt(payload) {
 }
 
 function buildAmbiguousRefinePrompt(payload, residueMap, ambiguous) {
+  const skill = loadStageSkills([
+    "stage_5_refine_ambiguous.md",
+    "stage_6_validation.md"
+  ]);
   const data = {
     anchor_mode: payload.anchor_mode || "auto",
     seed_anchors: payload.seed_anchors || [],
@@ -229,6 +251,8 @@ function buildAmbiguousRefinePrompt(payload, residueMap, ambiguous) {
     "Each assignment must keep experiment_key and peak_id exactly.",
     "Use empty strings and low confidence if still uncertain.",
     "No markdown. No prose.",
+    "SKILL_CONTEXT:",
+    skill,
     "INPUT_JSON:",
     JSON.stringify(data)
   ].join("\n");
