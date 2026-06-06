@@ -10,7 +10,7 @@ Rules:
 - For Bruker/Sparky-style lists, common columns are:
   - `Assignment`
   - `w1`, `w2`, `w3`
-  - `DataHeight`
+  - `DataHeight`, `Data Height`
 - For `1H-15N HSQC`, map dimensions as `N` and `HN`.
 - For `HNCACB` and `HN(CO)CACB`/`CBCA(CO)NH`, map dimensions as `N`, `Cx`, and `HN`.
 - Blank/header-like repeated rows should be ignored.

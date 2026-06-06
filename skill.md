@@ -23,4 +23,4 @@ Default two-stage tolerances:
 - Candidate search: `H = 0.20 ppm`, `C = 0.50 ppm`, `N = 0.80 ppm`.
 - Confirmation: `H = 0.04 ppm`, `C = 0.25 ppm`, `N = 0.30 ppm`.
 
-The app should first ask the LLM for a compact `residue_assignment_map`, then fill peak-list rows programmatically. Only ambiguous or low-confidence rows should be sent to a small refinement prompt.
+The app should build the compact `residue_assignment_map` programmatically, then fill peak-list rows programmatically. Only selected medium/low-confidence or blank rows should be sent to the LLM for stage 4/5/6 review, refinement, and validation.

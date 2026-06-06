@@ -1,6 +1,6 @@
 # Stage 3: Compact Residue Assignment Map
 
-Goal: build a compact `residue_assignment_map`, not one output row per peak.
+Goal: build a compact `residue_assignment_map`, not one output row per peak. This stage is intended to run programmatically in `server.js`; the LLM should only review compact results later.
 
 Use:
 

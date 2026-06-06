@@ -10,7 +10,6 @@ loadEnv(path.join(ROOT, ".env"));
 const ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY || "";
 const ANTHROPIC_MODEL = process.env.ANTHROPIC_MODEL || "claude-sonnet-4-5";
 const ANTHROPIC_MAX_TOKENS = Number(process.env.ANTHROPIC_MAX_TOKENS || 24000);
-const ASSIGNMENT_BATCH_SIZE = Number(process.env.ASSIGNMENT_BATCH_SIZE || 25);
 const AMBIGUOUS_REFINE_LIMIT = Number(process.env.AMBIGUOUS_REFINE_LIMIT || 40);
 const MAX_BODY_BYTES = 8 * 1024 * 1024;
 const LOOSE_TOL = { H: 0.2, C: 0.5, N: 0.8 };
@@ -117,138 +116,29 @@ function readBody(req) {
   });
 }
 
-function compactPayload(payload) {
-  const experiments = {};
-  for (const [key, exp] of Object.entries(payload.experiments || {})) {
-    experiments[key] = {
-      title: exp.title,
-      mapping: exp.mapping,
-      normalized_rows: exp.normalized_rows || [],
-      row_count: (exp.normalized_rows || []).length
-    };
-  }
-  return {
-    sequence: payload.sequence || [],
-    experiments
-  };
-}
-
-function buildPrompt(payload) {
+function buildAssignmentReviewPrompt(payload, residueMap, assignments) {
   const skill = loadStageSkills([
     "stage_4_apply_peak_labels.md",
     "stage_5_refine_ambiguous.md",
     "stage_6_validation.md"
   ]);
-  const data = compactPayload(payload);
-  return [
-    "You are assigning protein NMR peak lists for a local app.",
-    "Use the NMR assignment skill below. Be conservative: leave fields blank or use low confidence when evidence is weak or contradictory.",
-    "",
-    "Return ONLY valid JSON with this shape:",
-    "{",
-    '  "assignments": [',
-    "    {",
-    '      "experiment_key": "HSQC",',
-    '      "peak_id": "original peak id",',
-    '      "assigned_label": "E31N-HN or E31N-CA-HN",',
-    '      "assigned_anchor_residue": "E31",',
-    '      "assigned_source_residue": "E31",',
-    '      "assigned_source_atoms": "N,HN or N,CA,HN",',
-    '      "assigned_relation": "intra or sequential_i_minus_1 or ambiguous",',
-    '      "confidence": "high or medium or low or ambiguous",',
-    '      "notes": "0-5 words"',
-    "    }",
-    "  ]",
-    "}",
-    "",
-    "Rules:",
-    "- Include one output object for every normalized input peak row from every experiment.",
-    "- Keep every peak_id exactly as provided.",
-    "- For 1H-15N HSQC use labels such as E31N-HN.",
-    "- For HNCACB/HNCA/CBCA(CO)NH/HN(CO)CACB use labels such as E31N-CA-HN or E31N-CB-HN.",
-    "- Proline has no normal backbone amide peak.",
-    "- First residue is often absent from HSQC.",
-    "- If a peak cannot be assigned confidently, keep residue fields blank and confidence low or ambiguous.",
-    "- Use two-stage tolerances: loose candidate search H=0.20 ppm, C=0.50 ppm, N=0.80 ppm; confirmation H=0.04 ppm, C=0.25 ppm, N=0.30 ppm.",
-    "- Do not include markdown, code fences, comments, prose, or explanations outside the JSON object.",
-    "- Output compact JSON. Do not pretty-print. Do not add whitespace unless required by JSON syntax.",
-    "- Keep notes empty unless there is a critical warning. If used, notes must be 0-5 words.",
-    "- Prefer empty strings over explanatory text for uncertain fields.",
-    `- This request may be one batch from a larger job. Assign only the rows present in INPUT_DATA_JSON for this request.`,
-    "",
-    "SKILL_CONTEXT:",
-    skill,
-    "",
-    "INPUT_DATA_JSON:",
-    JSON.stringify(data)
-  ].join("\n");
-}
-
-function buildResidueMapPrompt(payload) {
-  const skill = loadStageSkills([
-    "stage_2_anchor_selection.md",
-    "stage_3_residue_map.md"
-  ]);
-  const data = compactPayload(payload);
-  return [
-    "You are assigning protein NMR backbone peak lists.",
-    "Do NOT output one row per peak. First build a compact residue_assignment_map.",
-    "Use HSQC anchors together with HNCACB and HN(CO)CACB/CBCA(CO)NH sequential carbon evidence.",
-    "The app will programmatically fill all peak lists from your compact map.",
-    "",
-    "Return ONLY compact JSON with this shape:",
-    "{",
-    '  "residue_assignment_map": [',
-    "    {",
-    '      "anchor_residue": "E31",',
-    '      "hsqc_peak_id": "peak id or empty",',
-    '      "HN": 8.786,',
-    '      "N": 121.04,',
-    '      "CA_i": 56.04,',
-    '      "CB_i": 30.2,',
-    '      "previous_residue": "D30",',
-    '      "CA_i_minus_1": 54.8,',
-    '      "CB_i_minus_1": 42.1,',
-    '      "confidence": "high|medium|low|ambiguous",',
-    '      "notes": "0-8 words"',
-    "    }",
-    "  ]",
-    "}",
-    "",
-    "Rules:",
-    "- Map each confident HSQC amide anchor to at most one sequence residue.",
-    "- If anchor_mode is custom, honor seed_anchors first and walk sequentially from those seeds.",
-    "- If anchor_mode is auto, use residue-type CA/CB patterns, Gly no CB, Ser/Thr high CB, Ala low CB, Pro gaps, and sequence pattern matching.",
-    "- Use two-stage tolerances: loose candidate search H=0.20 ppm, C=0.50 ppm, N=0.80 ppm; confirmation H=0.04 ppm, C=0.25 ppm, N=0.30 ppm.",
-    "- HNCACB contains intra-residue and possible i-1 CA/CB for the same amide anchor.",
-    "- HN(CO)CACB/CBCA(CO)NH contains i-1 CA/CB for the same amide anchor.",
-    "- Leave uncertain anchors out of the map or mark confidence low/ambiguous.",
-    "- Keep JSON compact. No markdown. No prose outside JSON.",
-    "",
-    "SKILL_CONTEXT:",
-    skill,
-    "",
-    "INPUT_DATA_JSON:",
-    JSON.stringify(data)
-  ].join("\n");
-}
-
-function buildAmbiguousRefinePrompt(payload, residueMap, ambiguous) {
-  const skill = loadStageSkills([
-    "stage_5_refine_ambiguous.md",
-    "stage_6_validation.md"
-  ]);
+  const reviewRows = assignments
+    .filter(row => !row.assigned_label || ["low", "ambiguous", "medium"].includes(String(row.confidence || "").toLowerCase()))
+    .slice(0, AMBIGUOUS_REFINE_LIMIT);
   const data = {
     anchor_mode: payload.anchor_mode || "auto",
     seed_anchors: payload.seed_anchors || [],
     sequence: payload.sequence || [],
     residue_assignment_map: residueMap,
-    ambiguous_rows: ambiguous.slice(0, AMBIGUOUS_REFINE_LIMIT)
+    rows_to_review: reviewRows
   };
   return [
-    "Refine only these ambiguous NMR peak assignments using the residue_assignment_map.",
+    "Review programmatic NMR assignments from stages 2/3/4.",
+    "Stages 2 and 3 were computed programmatically. Do not rebuild the full residue map from raw peak lists.",
+    "Use stage 4/5/6 skills to correct only rows_to_review when the compact map supports a correction.",
     "Return ONLY compact JSON: {\"assignments\":[...]}",
-    "Each assignment must keep experiment_key and peak_id exactly.",
+    "Return only changed or confirmed review rows; do not output all peak rows.",
+    "Keep experiment_key and peak_id exactly.",
     "Use empty strings and low confidence if still uncertain.",
     "No markdown. No prose.",
     "SKILL_CONTEXT:",
@@ -298,50 +188,6 @@ function extractBalancedJsonObject(text) {
     if (depth === 0) return text.slice(start, i + 1);
   }
   return "";
-}
-
-async function callAnthropic(payload) {
-  if (!ANTHROPIC_API_KEY) {
-    throw new Error("Missing ANTHROPIC_API_KEY. Copy .env.example to .env and add your key.");
-  }
-  const response = await fetch("https://api.anthropic.com/v1/messages", {
-    method: "POST",
-    headers: {
-      "content-type": "application/json",
-      "x-api-key": ANTHROPIC_API_KEY,
-      "anthropic-version": "2023-06-01"
-    },
-    body: JSON.stringify({
-      model: ANTHROPIC_MODEL,
-      max_tokens: ANTHROPIC_MAX_TOKENS,
-      temperature: 0,
-      messages: [
-        { role: "user", content: buildPrompt(payload) }
-      ]
-    })
-  });
-  const data = await response.json().catch(() => ({}));
-  if (!response.ok) {
-    const message = data.error?.message || `Anthropic API returned HTTP ${response.status}.`;
-    throw new Error(message);
-  }
-  const text = (data.content || [])
-    .filter(part => part.type === "text")
-    .map(part => part.text)
-    .join("\n");
-  if (data.stop_reason === "max_tokens") {
-    throw new Error(`Model output hit the ${ANTHROPIC_MAX_TOKENS} token limit before completing JSON. Try fewer peak-list rows or raise ANTHROPIC_MAX_TOKENS in .env.`);
-  }
-  const parsed = parseModelJson(text);
-  return {
-    engine: `anthropic:${ANTHROPIC_MODEL}`,
-    usage: data.usage || {},
-    assignments: Array.isArray(parsed.assignments) ? parsed.assignments : []
-  };
-}
-
-async function callAnthropicStream(payload, onEvent, signal) {
-  return callAnthropicPromptStream(buildPrompt(payload), onEvent, signal);
 }
 
 async function callAnthropicPromptStream(prompt, onEvent, signal) {
@@ -431,33 +277,6 @@ async function callAnthropicPromptStream(prompt, onEvent, signal) {
   };
 }
 
-function buildAssignmentBatches(payload) {
-  const batches = [];
-  for (const [key, exp] of Object.entries(payload.experiments || {})) {
-    const rows = exp.normalized_rows || [];
-    if (!rows.length) continue;
-    for (let start = 0; start < rows.length; start += ASSIGNMENT_BATCH_SIZE) {
-      batches.push({
-        sequence: payload.sequence || [],
-        experiments: {
-          [key]: {
-            title: exp.title,
-            mapping: exp.mapping,
-            normalized_rows: rows.slice(start, start + ASSIGNMENT_BATCH_SIZE)
-          }
-        },
-        batch: {
-          experiment_key: key,
-          start_row: start + 1,
-          end_row: Math.min(start + ASSIGNMENT_BATCH_SIZE, rows.length),
-          row_count: rows.length
-        }
-      });
-    }
-  }
-  return batches;
-}
-
 function addUsage(total, next) {
   for (const [key, value] of Object.entries(next || {})) {
     if (typeof value === "number") total[key] = (total[key] || 0) + value;
@@ -466,6 +285,7 @@ function addUsage(total, next) {
 }
 
 function toNum(value) {
+  if (value === null || value === undefined || value === "") return null;
   const n = Number(value);
   return Number.isFinite(n) ? n : null;
 }
@@ -477,6 +297,124 @@ function near(a, b, tol) {
 function previousResidue(sequence, label) {
   const idx = sequence.findIndex(row => row.residue_label === label);
   return idx > 0 ? sequence[idx - 1] : null;
+}
+
+function residueByLabel(sequence, label) {
+  return sequence.find(row => row.residue_label === String(label || "").toUpperCase()) || null;
+}
+
+function scoreCarbonForResidue(values, residue) {
+  if (!residue || !values.length) return 0;
+  const expected = CA_CB[residue.one_letter] || {};
+  let score = 0;
+  if (expected.CA !== null && expected.CA !== undefined) {
+    const d = Math.min(...values.map(v => Math.abs(v - expected.CA)));
+    if (d <= CONFIRM_TOL.C) score += 2.0;
+    else if (d <= LOOSE_TOL.C) score += 1.0;
+  }
+  if (expected.CB !== null && expected.CB !== undefined) {
+    const d = Math.min(...values.map(v => Math.abs(v - expected.CB)));
+    if (d <= CONFIRM_TOL.C) score += 2.0;
+    else if (d <= LOOSE_TOL.C) score += 1.0;
+  } else if (residue.one_letter === "G" && !values.some(v => v > 55)) {
+    score += 1.5;
+  }
+  if (residue.one_letter === "G" && values.some(v => v > 55)) score -= 1.0;
+  return score;
+}
+
+function rowsFor(payload, key) {
+  return payload.experiments?.[key]?.normalized_rows || [];
+}
+
+function carbonRowsNear(rows, anchor) {
+  return rows.filter(row => near(toNum(row.HN), toNum(anchor.HN), LOOSE_TOL.H)
+    && near(toNum(row.N), toNum(anchor.N), LOOSE_TOL.N)
+    && toNum(row.C) !== null);
+}
+
+function carbonValuesNear(rows, anchor) {
+  return carbonRowsNear(rows, anchor).map(row => toNum(row.C));
+}
+
+function seedResidueForAnchor(payload, anchor) {
+  for (const seed of payload.seed_anchors || []) {
+    const residue = residueByLabel(payload.sequence || [], seed.residue_label);
+    if (!residue) continue;
+    if (seed.peak_id && seed.peak_id === anchor.peak_id) return residue;
+    if (near(toNum(seed.HN), toNum(anchor.HN), LOOSE_TOL.H) && near(toNum(seed.N), toNum(anchor.N), LOOSE_TOL.N)) return residue;
+  }
+  return null;
+}
+
+function chooseObservedCarbon(values, residue, atom) {
+  if (!residue || !values.length) return null;
+  const expected = CA_CB[residue.one_letter] || {};
+  const target = expected[atom];
+  if (target === null || target === undefined) return null;
+  let best = null;
+  let bestDistance = Infinity;
+  for (const value of values) {
+    const distance = Math.abs(value - target);
+    if (distance < bestDistance) {
+      best = value;
+      bestDistance = distance;
+    }
+  }
+  return bestDistance <= LOOSE_TOL.C ? best : null;
+}
+
+function buildProgrammaticResidueMap(payload) {
+  const sequence = payload.sequence || [];
+  const hsqcRows = rowsFor(payload, "HSQC").filter(row => toNum(row.HN) !== null && toNum(row.N) !== null);
+  const hncacbRows = rowsFor(payload, "HNCACB");
+  const cbcaconhRows = [
+    ...rowsFor(payload, "CBCACONH"),
+    ...rowsFor(payload, "HNCOCA")
+  ];
+  const usedResidues = new Set();
+  const map = [];
+
+  for (const anchor of hsqcRows) {
+    const seedResidue = seedResidueForAnchor(payload, anchor);
+    const hncacbValues = carbonValuesNear(hncacbRows, anchor);
+    const cbcaconhValues = carbonValuesNear(cbcaconhRows, anchor);
+    let best = null;
+    for (const residue of sequence) {
+      if (!residue || residue.one_letter === "P" || usedResidues.has(residue.residue_label)) continue;
+      const prev = previousResidue(sequence, residue.residue_label);
+      let score = 0;
+      if (seedResidue) {
+        score += seedResidue.residue_label === residue.residue_label ? 100 : -100;
+      }
+      if (residue.one_letter === "G" && toNum(anchor.N) >= 90 && toNum(anchor.N) <= 110) score += 1.5;
+      if (residue.one_letter !== "G" && (toNum(anchor.N) < 90 || toNum(anchor.N) > 110)) score += 0.3;
+      score += scoreCarbonForResidue(hncacbValues, residue);
+      if (prev) {
+        score += 0.8 * scoreCarbonForResidue(hncacbValues, prev);
+        score += 1.4 * scoreCarbonForResidue(cbcaconhValues, prev);
+      }
+      if (!best || score > best.score) best = { residue, prev, score };
+    }
+    if (!best || best.score < (seedResidue ? 1 : 2.2)) continue;
+    usedResidues.add(best.residue.residue_label);
+    const confidence = best.score >= 5 || seedResidue ? "high" : best.score >= 3 ? "medium" : "low";
+    map.push({
+      anchor_residue: best.residue.residue_label,
+      hsqc_peak_id: anchor.peak_id || "",
+      HN: toNum(anchor.HN),
+      N: toNum(anchor.N),
+      CA_i: chooseObservedCarbon(hncacbValues, best.residue, "CA"),
+      CB_i: chooseObservedCarbon(hncacbValues, best.residue, "CB"),
+      previous_residue: best.prev?.residue_label || "",
+      CA_i_minus_1: chooseObservedCarbon(cbcaconhValues, best.prev, "CA") ?? chooseObservedCarbon(hncacbValues, best.prev, "CA"),
+      CB_i_minus_1: chooseObservedCarbon(cbcaconhValues, best.prev, "CB") ?? chooseObservedCarbon(hncacbValues, best.prev, "CB"),
+      confidence,
+      notes: seedResidue ? "seed" : "program",
+      score: Number(best.score.toFixed(3))
+    });
+  }
+  return map;
 }
 
 function normalizeMapEntry(entry) {
@@ -615,23 +553,14 @@ function mergeAssignments(base, refined) {
 async function callAnthropicResidueMapWorkflowStream(payload, onEvent, signal) {
   const usage = {};
   let previousUsage = {};
-  const mapResult = await callAnthropicPromptStream(buildResidueMapPrompt(payload), event => {
-    if (event.type !== "usage") return onEvent(event);
-    const delta = {};
-    for (const [key, value] of Object.entries(event.usage || {})) {
-      if (typeof value === "number") delta[key] = value - (previousUsage[key] || 0);
-    }
-    previousUsage = event.usage || {};
-    addUsage(usage, delta);
-    onEvent({ type: "usage", usage });
-  }, signal);
-  let { residueMap, assignments } = applyResidueMapToPeaks(payload, mapResult.residue_assignment_map);
+  const programmaticMap = buildProgrammaticResidueMap(payload);
+  let { residueMap, assignments } = applyResidueMapToPeaks(payload, programmaticMap);
   onEvent({ type: "progress", stage: "map_applied", residue_count: residueMap.length, ambiguous_count: ambiguousAssignments(assignments).length });
 
-  const ambiguous = ambiguousAssignments(assignments);
-  if (ambiguous.length && AMBIGUOUS_REFINE_LIMIT > 0) {
+  const reviewNeeded = assignments.filter(row => !row.assigned_label || ["low", "ambiguous", "medium"].includes(String(row.confidence || "").toLowerCase()));
+  if (reviewNeeded.length && AMBIGUOUS_REFINE_LIMIT > 0) {
     previousUsage = {};
-    const refineResult = await callAnthropicPromptStream(buildAmbiguousRefinePrompt(payload, residueMap, ambiguous), event => {
+    const refineResult = await callAnthropicPromptStream(buildAssignmentReviewPrompt(payload, residueMap, assignments), event => {
       if (event.type !== "usage") return onEvent(event);
       const delta = {};
       for (const [key, value] of Object.entries(event.usage || {})) {
@@ -645,42 +574,9 @@ async function callAnthropicResidueMapWorkflowStream(payload, onEvent, signal) {
   }
 
   return {
-    engine: `anthropic:${ANTHROPIC_MODEL}:residue-map`,
+    engine: `programmatic-stage2-3+anthropic:${ANTHROPIC_MODEL}:stage4-6`,
     usage,
     residue_assignment_map: residueMap,
-    assignments
-  };
-}
-
-async function callAnthropicBatchedStream(payload, onEvent, signal) {
-  const batches = buildAssignmentBatches(payload);
-  if (!batches.length) {
-    return { engine: `anthropic:${ANTHROPIC_MODEL}`, usage: {}, assignments: [] };
-  }
-  const usage = {};
-  const assignments = [];
-  for (let index = 0; index < batches.length; index += 1) {
-    onEvent({ type: "progress", batch_index: index + 1, batch_count: batches.length, batch: batches[index].batch });
-    let previousUsage = {};
-    const result = await callAnthropicStream(batches[index], event => {
-      if (event.type !== "usage") {
-        onEvent(event);
-        return;
-      }
-      const delta = {};
-      for (const [key, value] of Object.entries(event.usage || {})) {
-        if (typeof value === "number") delta[key] = value - (previousUsage[key] || 0);
-      }
-      previousUsage = event.usage || {};
-      addUsage(usage, delta);
-      onEvent({ type: "usage", usage });
-    }, signal);
-    assignments.push(...result.assignments);
-    onEvent({ type: "progress", batch_index: index + 1, batch_count: batches.length, completed: true, batch: batches[index].batch });
-  }
-  return {
-    engine: `anthropic:${ANTHROPIC_MODEL}`,
-    usage,
     assignments
   };
 }

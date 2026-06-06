@@ -1,6 +1,6 @@
 # Stage 2: Anchor Selection
 
-Goal: choose `1H-15N HSQC` amide anchor peaks and map them to possible sequence residues.
+Goal: choose `1H-15N HSQC` amide anchor peaks and map them to possible sequence residues. This stage is intended to run programmatically in `server.js`, not as a large LLM table-matching prompt.
 
 Anchor modes:
 

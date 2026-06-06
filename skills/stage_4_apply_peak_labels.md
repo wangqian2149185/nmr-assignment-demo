@@ -2,7 +2,7 @@
 
 Goal: apply a compact `residue_assignment_map` to uploaded peak-list rows.
 
-This stage should be mostly deterministic and programmatic.
+This stage is first performed deterministically in `server.js`. The LLM may review and correct selected medium/low-confidence rows after programmatic fill.
 
 Rules:
 

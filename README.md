@@ -68,8 +68,8 @@ http://localhost:8765
 - Lets the user upload a protein sequence as FASTA, one-letter text, or tabular index/residue columns.
 - Sends the mapped data plus only the relevant stage skills to the local backend.
 - The backend calls Anthropic with the user's own API key.
-- The backend first asks the LLM for a compact `residue_assignment_map`, then fills all peak-list rows programmatically.
-- Only low-confidence or blank rows are sent to a small second refinement prompt.
+- The backend builds a compact `residue_assignment_map` programmatically, then fills peak-list rows from that map.
+- Only medium/low-confidence or blank rows are sent to a small LLM review/refinement prompt.
 - Shows assigned peak lists in tables.
 - Draws three NMR-style reversed-axis plots:
   - HSQC: `HN` vs `N`
@@ -103,11 +103,11 @@ E31N-HN
 
 ## Runtime Workflow
 
-The app avoids asking the LLM to write one JSON row for every peak. That was expensive and often lost cross-experiment evidence. The current workflow is:
+The app avoids asking the LLM to do large numeric matching or write one JSON row for every peak. That was expensive and often lost cross-experiment evidence. The current workflow is:
 
-1. Build a compact `residue_assignment_map` from HSQC + HNCACB + HN(CO)CACB/CBCA(CO)NH.
+1. Programmatically build a compact `residue_assignment_map` from HSQC + HNCACB + HN(CO)CACB/CBCA(CO)NH.
 2. Programmatically apply that map back to all uploaded peak lists.
-3. Send only ambiguous or low-confidence rows to a small refinement prompt.
+3. Send only medium/low-confidence or blank rows to a small LLM review/refinement prompt.
 
 This reduces token use and keeps the global backbone-walk context intact.
 
@@ -115,13 +115,13 @@ This reduces token use and keeps the global backbone-walk context intact.
 
 `skill.md` is now a short controller skill. Detailed instructions are split into six stage-specific files in `skills/`.
 
-The backend loads only the needed sub-skills for each LLM call:
+The backend uses the stage files this way:
 
-- Residue-map call: controller + stage 2 + stage 3
-- Programmatic fill: stage 4 is implemented in server logic
-- Ambiguous refinement call: controller + stage 5 + stage 6
+- Stage 2/3: implemented programmatically in `server.js`
+- Stage 4: programmatic fill, then LLM review for selected rows
+- Stage 5/6 LLM review call: controller + stage 4 + stage 5 + stage 6
 
-This keeps input tokens smaller than sending one large all-purpose skill every time.
+This keeps input tokens smaller and avoids asking the LLM to perform large-scale ppm matching.
 
 ## Default Tolerances
 
@@ -140,4 +140,4 @@ The loose set is used to collect possible correlation peaks. The tight set is us
 
 ## Current Scope
 
-This app does not run SkillOpt training. SkillOpt was used earlier to improve and evaluate the assignment instructions. This app uses the staged skill files at runtime: the uploaded peak lists and sequence are sent to an LLM together with only the relevant stage instructions, and the LLM returns a compact residue map or refined assignment rows.
+This app does not run SkillOpt training. SkillOpt was used earlier to improve and evaluate the assignment instructions. This app uses programmatic stage 2/3 matching and sends only compact review context plus relevant stage instructions to the LLM.
