@@ -116,31 +116,32 @@ function readBody(req) {
   });
 }
 
-function buildAssignmentReviewPrompt(payload, residueMap, assignments) {
+function buildFragmentValidationPrompt(payload, fragments, iteration, previousFeedback) {
   const skill = loadStageSkills([
-    "stage_4_apply_peak_labels.md",
     "stage_5_refine_ambiguous.md",
     "stage_6_validation.md"
   ]);
-  const reviewRows = assignments
-    .filter(row => !row.assigned_label || ["low", "ambiguous", "medium"].includes(String(row.confidence || "").toLowerCase()))
-    .slice(0, AMBIGUOUS_REFINE_LIMIT);
   const data = {
-    anchor_mode: payload.anchor_mode || "auto",
-    seed_anchors: payload.seed_anchors || [],
+    iteration,
     sequence: payload.sequence || [],
-    residue_assignment_map: residueMap,
-    rows_to_review: reviewRows
+    connected_fragments: fragments,
+    previous_feedback: previousFeedback || []
   };
   return [
-    "Review programmatic NMR assignments from stages 2/3/4.",
-    "Stages 2 and 3 were computed programmatically. Do not rebuild the full residue map from raw peak lists.",
-    "Use stage 4/5/6 skills to correct only rows_to_review when the compact map supports a correction.",
-    "Return ONLY compact JSON: {\"assignments\":[...]}",
-    "Return only changed or confirmed review rows; do not output all peak rows.",
-    "Keep experiment_key and peak_id exactly.",
-    "Use empty strings and low confidence if still uncertain.",
-    "No markdown. No prose.",
+    "You are validating connected pseudo-residue fragments from protein NMR spectra.",
+    "The app has already grouped peaks by matching HN and N, then connected pseudo residues with i-1 Cx evidence.",
+    "Your job is to decide whether each fragment can be a contiguous part of the uploaded protein sequence.",
+    "Use HN, N, intra Cx, i-1 Cx, Gly N range, Gly no CB, Ser/Thr high CB, Ala low CB, and conservative NMR chemical-shift reasoning.",
+    "Do not invent peaks. Do not assign a pseudo residue if the evidence conflicts with the sequence.",
+    "Return ONLY compact JSON with this shape:",
+    "{\"placements\":[{\"fragment_id\":\"F001\",\"start_index\":31,\"confidence\":\"high|medium|low\",\"residue_labels_by_temp_id\":{\"R001\":\"E31\"},\"mismatches\":[{\"temp_id\":\"R002\",\"reason\":\"0-10 words\"}]}],\"rejected_links\":[{\"from_temp_id\":\"R001\",\"to_temp_id\":\"R002\",\"reason\":\"0-10 words\"}],\"notes\":\"0-20 words\"}",
+    "Rules:",
+    "- start_index is the sequence index for the first pseudo residue in the fragment.",
+    "- residue_labels_by_temp_id may include only confidently placed pseudo residues.",
+    "- If a fragment is not a real sequence segment, return it with low confidence or omit it.",
+    "- Identify mismatched pseudo residues when Cx/N/HN evidence does not fit the proposed residue type.",
+    "- Use rejected_links for connections the app should break before trying again.",
+    "- No markdown. No prose outside JSON.",
     "SKILL_CONTEXT:",
     skill,
     "INPUT_JSON:",
@@ -273,7 +274,10 @@ async function callAnthropicPromptStream(prompt, onEvent, signal) {
     engine: `anthropic:${ANTHROPIC_MODEL}`,
     usage,
     assignments: Array.isArray(parsed.assignments) ? parsed.assignments : [],
-    residue_assignment_map: Array.isArray(parsed.residue_assignment_map) ? parsed.residue_assignment_map : []
+    residue_assignment_map: Array.isArray(parsed.residue_assignment_map) ? parsed.residue_assignment_map : [],
+    placements: Array.isArray(parsed.placements) ? parsed.placements : [],
+    rejected_links: Array.isArray(parsed.rejected_links) ? parsed.rejected_links : [],
+    notes: parsed.notes || ""
   };
 }
 
@@ -303,118 +307,310 @@ function residueByLabel(sequence, label) {
   return sequence.find(row => row.residue_label === String(label || "").toUpperCase()) || null;
 }
 
-function scoreCarbonForResidue(values, residue) {
-  if (!residue || !values.length) return 0;
-  const expected = CA_CB[residue.one_letter] || {};
-  let score = 0;
-  if (expected.CA !== null && expected.CA !== undefined) {
-    const d = Math.min(...values.map(v => Math.abs(v - expected.CA)));
-    if (d <= CONFIRM_TOL.C) score += 2.0;
-    else if (d <= LOOSE_TOL.C) score += 1.0;
-  }
-  if (expected.CB !== null && expected.CB !== undefined) {
-    const d = Math.min(...values.map(v => Math.abs(v - expected.CB)));
-    if (d <= CONFIRM_TOL.C) score += 2.0;
-    else if (d <= LOOSE_TOL.C) score += 1.0;
-  } else if (residue.one_letter === "G" && !values.some(v => v > 55)) {
-    score += 1.5;
-  }
-  if (residue.one_letter === "G" && values.some(v => v > 55)) score -= 1.0;
-  return score;
-}
-
 function rowsFor(payload, key) {
   return payload.experiments?.[key]?.normalized_rows || [];
 }
 
-function carbonRowsNear(rows, anchor) {
-  return rows.filter(row => near(toNum(row.HN), toNum(anchor.HN), LOOSE_TOL.H)
-    && near(toNum(row.N), toNum(anchor.N), LOOSE_TOL.N)
-    && toNum(row.C) !== null);
-}
-
-function carbonValuesNear(rows, anchor) {
-  return carbonRowsNear(rows, anchor).map(row => toNum(row.C));
-}
-
-function seedResidueForAnchor(payload, anchor) {
-  for (const seed of payload.seed_anchors || []) {
-    const residue = residueByLabel(payload.sequence || [], seed.residue_label);
-    if (!residue) continue;
-    if (seed.peak_id && seed.peak_id === anchor.peak_id) return residue;
-    if (near(toNum(seed.HN), toNum(anchor.HN), LOOSE_TOL.H) && near(toNum(seed.N), toNum(anchor.N), LOOSE_TOL.N)) return residue;
-  }
-  return null;
-}
-
-function chooseObservedCarbon(values, residue, atom) {
-  if (!residue || !values.length) return null;
-  const expected = CA_CB[residue.one_letter] || {};
-  const target = expected[atom];
-  if (target === null || target === undefined) return null;
-  let best = null;
-  let bestDistance = Infinity;
+function uniqueRounded(values) {
+  const seen = new Set();
+  const out = [];
   for (const value of values) {
-    const distance = Math.abs(value - target);
-    if (distance < bestDistance) {
-      best = value;
-      bestDistance = distance;
-    }
+    if (!Number.isFinite(value)) continue;
+    const rounded = Number(value.toFixed(3));
+    const key = rounded.toFixed(3);
+    if (seen.has(key)) continue;
+    seen.add(key);
+    out.push(rounded);
   }
-  return bestDistance <= LOOSE_TOL.C ? best : null;
+  return out.sort((a, b) => a - b);
 }
 
-function buildProgrammaticResidueMap(payload) {
-  const sequence = payload.sequence || [];
-  const hsqcRows = rowsFor(payload, "HSQC").filter(row => toNum(row.HN) !== null && toNum(row.N) !== null);
-  const hncacbRows = rowsFor(payload, "HNCACB");
-  const cbcaconhRows = [
-    ...rowsFor(payload, "CBCACONH"),
-    ...rowsFor(payload, "HNCOCA")
-  ];
-  const usedResidues = new Set();
-  const map = [];
+function carbonDimension(row) {
+  const dim = String(row.C_dimension || row.C_atom || "").toUpperCase();
+  if (["CA", "CB", "CO", "CX"].includes(dim)) return dim;
+  return toNum(row.CO) !== null ? "CO" : "CX";
+}
 
-  for (const anchor of hsqcRows) {
-    const seedResidue = seedResidueForAnchor(payload, anchor);
-    const hncacbValues = carbonValuesNear(hncacbRows, anchor);
-    const cbcaconhValues = carbonValuesNear(cbcaconhRows, anchor);
-    let best = null;
-    for (const residue of sequence) {
-      if (!residue || residue.one_letter === "P" || usedResidues.has(residue.residue_label)) continue;
-      const prev = previousResidue(sequence, residue.residue_label);
-      let score = 0;
-      if (seedResidue) {
-        score += seedResidue.residue_label === residue.residue_label ? 100 : -100;
-      }
-      if (residue.one_letter === "G" && toNum(anchor.N) >= 90 && toNum(anchor.N) <= 110) score += 1.5;
-      if (residue.one_letter !== "G" && (toNum(anchor.N) < 90 || toNum(anchor.N) > 110)) score += 0.3;
-      score += scoreCarbonForResidue(hncacbValues, residue);
-      if (prev) {
-        score += 0.8 * scoreCarbonForResidue(hncacbValues, prev);
-        score += 1.4 * scoreCarbonForResidue(cbcaconhValues, prev);
-      }
-      if (!best || score > best.score) best = { residue, prev, score };
+function collectMatchingRows(payload, anchor) {
+  const rows = [];
+  for (const [experimentKey, exp] of Object.entries(payload.experiments || {})) {
+    for (const row of exp.normalized_rows || []) {
+      if (!near(toNum(row.HN), toNum(anchor.HN), LOOSE_TOL.H) || !near(toNum(row.N), toNum(anchor.N), LOOSE_TOL.N)) continue;
+      rows.push({ ...row, experiment_key: experimentKey });
     }
-    if (!best || best.score < (seedResidue ? 1 : 2.2)) continue;
-    usedResidues.add(best.residue.residue_label);
-    const confidence = best.score >= 5 || seedResidue ? "high" : best.score >= 3 ? "medium" : "low";
-    map.push({
-      anchor_residue: best.residue.residue_label,
+  }
+  return rows;
+}
+
+function buildObservedResidueTerms(payload) {
+  const hsqcRows = rowsFor(payload, "HSQC").filter(row => toNum(row.HN) !== null && toNum(row.N) !== null);
+  return hsqcRows.map((anchor, index) => {
+    const termId = `R${String(index + 1).padStart(3, "0")}`;
+    const matchedRows = collectMatchingRows(payload, anchor);
+    const intraCarbonRows = matchedRows.filter(row => ["HNCA", "HNCACB"].includes(row.experiment_key) && toNum(row.C) !== null);
+    const previousCarbonRows = matchedRows.filter(row => ["CBCACONH", "HNCOCA"].includes(row.experiment_key) && toNum(row.C) !== null);
+    const coRows = matchedRows.filter(row => row.experiment_key === "HNCO" && toNum(row.C) !== null);
+    const hxRows = matchedRows.filter(row => ["HBHACONH"].includes(row.experiment_key) && toNum(row.Hx) !== null);
+    return {
+      temp_id: termId,
       hsqc_peak_id: anchor.peak_id || "",
       HN: toNum(anchor.HN),
       N: toNum(anchor.N),
-      CA_i: chooseObservedCarbon(hncacbValues, best.residue, "CA"),
-      CB_i: chooseObservedCarbon(hncacbValues, best.residue, "CB"),
-      previous_residue: best.prev?.residue_label || "",
-      CA_i_minus_1: chooseObservedCarbon(cbcaconhValues, best.prev, "CA") ?? chooseObservedCarbon(hncacbValues, best.prev, "CA"),
-      CB_i_minus_1: chooseObservedCarbon(cbcaconhValues, best.prev, "CB") ?? chooseObservedCarbon(hncacbValues, best.prev, "CB"),
-      confidence,
-      notes: seedResidue ? "seed" : "program",
-      score: Number(best.score.toFixed(3))
-    });
+      intra_carbons: uniqueRounded(intraCarbonRows.map(row => toNum(row.C))),
+      previous_carbons: uniqueRounded(previousCarbonRows.map(row => toNum(row.C))),
+      co_i_minus_1: uniqueRounded(coRows.map(row => toNum(row.C))),
+      hx_values: uniqueRounded(hxRows.map(row => toNum(row.Hx))),
+      peak_refs: matchedRows.map(row => ({
+        experiment_key: row.experiment_key,
+        peak_id: row.peak_id || "",
+        HN: toNum(row.HN),
+        N: toNum(row.N),
+        C: toNum(row.C),
+        C_dimension: carbonDimension(row)
+      })),
+      candidate_residue_label: "",
+      confidence: "unplaced"
+    };
+  });
+}
+
+function carbonSetMatchScore(needles, haystack) {
+  if (!needles.length || !haystack.length) return 0;
+  let score = 0;
+  for (const value of needles) {
+    const best = Math.min(...haystack.map(other => Math.abs(value - other)));
+    if (best <= CONFIRM_TOL.C) score += 2;
+    else if (best <= LOOSE_TOL.C) score += 1;
   }
-  return map;
+  return score;
+}
+
+function buildResidueLinks(terms, rejectedLinks = new Set()) {
+  const candidates = [];
+  for (const next of terms) {
+    for (const prev of terms) {
+      if (prev.temp_id === next.temp_id) continue;
+      const key = `${prev.temp_id}->${next.temp_id}`;
+      if (rejectedLinks.has(key)) continue;
+      const score = carbonSetMatchScore(next.previous_carbons, prev.intra_carbons);
+      if (score <= 0) continue;
+      candidates.push({
+        from_temp_id: prev.temp_id,
+        to_temp_id: next.temp_id,
+        score,
+        matched_previous_carbons: next.previous_carbons,
+        matched_intra_carbons: prev.intra_carbons
+      });
+    }
+  }
+  candidates.sort((a, b) => b.score - a.score);
+  const usedFrom = new Set();
+  const usedTo = new Set();
+  const links = [];
+  for (const link of candidates) {
+    if (usedFrom.has(link.from_temp_id) || usedTo.has(link.to_temp_id)) continue;
+    if (link.score < 2) continue;
+    usedFrom.add(link.from_temp_id);
+    usedTo.add(link.to_temp_id);
+    links.push(link);
+  }
+  return links;
+}
+
+function buildConnectedFragments(terms, links) {
+  const byId = new Map(terms.map(term => [term.temp_id, term]));
+  const nextById = new Map(links.map(link => [link.from_temp_id, link]));
+  const prevById = new Map(links.map(link => [link.to_temp_id, link]));
+  const starts = terms.filter(term => !prevById.has(term.temp_id));
+  const visited = new Set();
+  const fragments = [];
+
+  function addFragment(start) {
+    const residues = [];
+    const fragmentLinks = [];
+    let current = start;
+    while (current && !visited.has(current.temp_id)) {
+      visited.add(current.temp_id);
+      residues.push(current);
+      const link = nextById.get(current.temp_id);
+      if (!link) break;
+      fragmentLinks.push(link);
+      current = byId.get(link.to_temp_id);
+    }
+    if (residues.length) {
+      fragments.push({
+        fragment_id: `F${String(fragments.length + 1).padStart(3, "0")}`,
+        residues,
+        links: fragmentLinks,
+        length: residues.length
+      });
+    }
+  }
+
+  for (const start of starts) addFragment(start);
+  for (const term of terms) {
+    if (!visited.has(term.temp_id)) addFragment(term);
+  }
+  return fragments.filter(fragment => fragment.length > 1);
+}
+
+function compactFragmentsForLLM(fragments) {
+  return fragments.map(fragment => ({
+    fragment_id: fragment.fragment_id,
+    length: fragment.length,
+    residues: fragment.residues.map(term => ({
+      temp_id: term.temp_id,
+      HN: term.HN,
+      N: term.N,
+      intra_carbons: term.intra_carbons,
+      previous_carbons: term.previous_carbons,
+      co_i_minus_1: term.co_i_minus_1,
+      hx_values: term.hx_values,
+      seed_or_current_assignment: term.candidate_residue_label || "",
+      confidence: term.confidence || "unplaced"
+    })),
+    links: fragment.links.map(link => ({
+      from_temp_id: link.from_temp_id,
+      to_temp_id: link.to_temp_id,
+      score: link.score
+    }))
+  }));
+}
+
+function normalizeRejectedLinks(feedback) {
+  const rejected = new Set();
+  for (const item of feedback || []) {
+    for (const link of item.rejected_links || []) {
+      if (link.from_temp_id && link.to_temp_id) rejected.add(`${link.from_temp_id}->${link.to_temp_id}`);
+    }
+  }
+  return rejected;
+}
+
+function placementMapFromFeedback(feedback) {
+  const out = new Map();
+  for (const item of feedback || []) {
+    for (const placement of item.placements || []) {
+      const labels = placement.residue_labels_by_temp_id || {};
+      for (const [tempId, residueLabel] of Object.entries(labels)) {
+        const clean = String(residueLabel || "").toUpperCase();
+        if (clean) out.set(tempId, { residue_label: clean, confidence: placement.confidence || "medium", fragment_id: placement.fragment_id || "" });
+      }
+    }
+  }
+  return out;
+}
+
+function seedPlacementMap(payload, terms) {
+  const out = new Map();
+  for (const seed of payload.seed_anchors || []) {
+    const residue = residueByLabel(payload.sequence || [], seed.residue_label);
+    if (!residue) continue;
+    const term = terms.find(item => seed.peak_id ? item.hsqc_peak_id === seed.peak_id : near(toNum(seed.HN), item.HN, LOOSE_TOL.H) && near(toNum(seed.N), item.N, LOOSE_TOL.N));
+    if (!term) continue;
+    out.set(term.temp_id, { residue_label: residue.residue_label, confidence: "high", fragment_id: "seed" });
+  }
+  return out;
+}
+
+function applyPlacementsToTerms(terms, placements) {
+  return terms.map(term => {
+    const placement = placements.get(term.temp_id);
+    if (!placement) return term;
+    return {
+      ...term,
+      candidate_residue_label: placement.residue_label,
+      confidence: placement.confidence || "medium",
+      placed_fragment_id: placement.fragment_id || ""
+    };
+  });
+}
+
+async function validateFragmentsWithLLM(payload, terms, onEvent, signal) {
+  const usage = {};
+  const feedback = [];
+  let placements = seedPlacementMap(payload, terms);
+  let bestAssigned = placements.size;
+  let stalled = 0;
+  let fragments = [];
+
+  for (let iteration = 1; iteration <= 3; iteration += 1) {
+    const rejectedLinks = normalizeRejectedLinks(feedback);
+    const placedTerms = applyPlacementsToTerms(terms, placements);
+    const links = buildResidueLinks(placedTerms, rejectedLinks);
+    fragments = buildConnectedFragments(placedTerms, links);
+    onEvent({ type: "progress", stage: "fragments_built", iteration, residue_terms: terms.length, fragment_count: fragments.length });
+    if (!fragments.length || !ANTHROPIC_API_KEY || AMBIGUOUS_REFINE_LIMIT === 0) break;
+
+    let previousUsage = {};
+    const result = await callAnthropicPromptStream(buildFragmentValidationPrompt(payload, compactFragmentsForLLM(fragments), iteration, feedback), event => {
+      if (event.type !== "usage") return onEvent(event);
+      const delta = {};
+      for (const [key, value] of Object.entries(event.usage || {})) {
+        if (typeof value === "number") delta[key] = value - (previousUsage[key] || 0);
+      }
+      previousUsage = event.usage || {};
+      addUsage(usage, delta);
+      onEvent({ type: "usage", usage });
+    }, signal);
+    const parsed = {
+      placements: Array.isArray(result.placements) ? result.placements : [],
+      rejected_links: Array.isArray(result.rejected_links) ? result.rejected_links : [],
+      notes: result.notes || ""
+    };
+    feedback.push(parsed);
+    placements = placementMapFromFeedback(feedback);
+    const assigned = placements.size;
+    onEvent({ type: "progress", stage: "fragments_validated", iteration, assigned_residue_terms: assigned, rejected_links: parsed.rejected_links.length });
+    if (assigned <= bestAssigned) stalled += 1;
+    else stalled = 0;
+    bestAssigned = Math.max(bestAssigned, assigned);
+    if (bestAssigned >= terms.length || stalled >= 3) break;
+  }
+
+  const finalTerms = applyPlacementsToTerms(terms, placements);
+  const finalLinks = buildResidueLinks(finalTerms, normalizeRejectedLinks(feedback));
+  const finalFragments = buildConnectedFragments(finalTerms, finalLinks);
+  return { usage, feedback, placements, residueTerms: finalTerms, connectedFragments: finalFragments };
+}
+
+function residueMapFromObservedTerms(payload, terms) {
+  const sequence = payload.sequence || [];
+  return terms
+    .filter(term => term.candidate_residue_label)
+    .map(term => {
+      const residue = residueByLabel(sequence, term.candidate_residue_label);
+      const prev = previousResidue(sequence, term.candidate_residue_label);
+      const expected = CA_CB[residue?.one_letter] || {};
+      const prevExpected = CA_CB[prev?.one_letter] || {};
+      const pickClosest = (values, target) => {
+        if (target === null || target === undefined || !values.length) return null;
+        let best = null;
+        let bestDistance = Infinity;
+        for (const value of values) {
+          const distance = Math.abs(value - target);
+          if (distance < bestDistance) {
+            best = value;
+            bestDistance = distance;
+          }
+        }
+        return bestDistance <= LOOSE_TOL.C ? best : null;
+      };
+      return {
+        anchor_residue: term.candidate_residue_label,
+        temp_id: term.temp_id,
+        hsqc_peak_id: term.hsqc_peak_id,
+        HN: term.HN,
+        N: term.N,
+        CA_i: pickClosest(term.intra_carbons, expected.CA),
+        CB_i: pickClosest(term.intra_carbons, expected.CB),
+        previous_residue: prev?.residue_label || "",
+        CA_i_minus_1: pickClosest(term.previous_carbons, prevExpected.CA),
+        CB_i_minus_1: pickClosest(term.previous_carbons, prevExpected.CB),
+        confidence: term.confidence || "medium",
+        notes: `fragment ${term.temp_id}`
+      };
+    });
 }
 
 function normalizeMapEntry(entry) {
@@ -542,40 +738,19 @@ function ambiguousAssignments(assignments) {
   return assignments.filter(row => !row.assigned_label || ["low", "ambiguous"].includes(String(row.confidence || "").toLowerCase()));
 }
 
-function mergeAssignments(base, refined) {
-  const byKey = new Map((refined || []).map(row => [`${row.experiment_key}::${row.peak_id}`, row]));
-  return base.map(row => {
-    const next = byKey.get(`${row.experiment_key}::${row.peak_id}`);
-    return next ? { ...row, ...next } : row;
-  });
-}
-
 async function callAnthropicResidueMapWorkflowStream(payload, onEvent, signal) {
-  const usage = {};
-  let previousUsage = {};
-  const programmaticMap = buildProgrammaticResidueMap(payload);
+  const observedTerms = buildObservedResidueTerms(payload);
+  const validation = await validateFragmentsWithLLM(payload, observedTerms, onEvent, signal);
+  const programmaticMap = residueMapFromObservedTerms(payload, validation.residueTerms);
   let { residueMap, assignments } = applyResidueMapToPeaks(payload, programmaticMap);
   onEvent({ type: "progress", stage: "map_applied", residue_count: residueMap.length, ambiguous_count: ambiguousAssignments(assignments).length });
 
-  const reviewNeeded = assignments.filter(row => !row.assigned_label || ["low", "ambiguous", "medium"].includes(String(row.confidence || "").toLowerCase()));
-  if (reviewNeeded.length && AMBIGUOUS_REFINE_LIMIT > 0) {
-    previousUsage = {};
-    const refineResult = await callAnthropicPromptStream(buildAssignmentReviewPrompt(payload, residueMap, assignments), event => {
-      if (event.type !== "usage") return onEvent(event);
-      const delta = {};
-      for (const [key, value] of Object.entries(event.usage || {})) {
-        if (typeof value === "number") delta[key] = value - (previousUsage[key] || 0);
-      }
-      previousUsage = event.usage || {};
-      addUsage(usage, delta);
-      onEvent({ type: "usage", usage });
-    }, signal);
-    assignments = mergeAssignments(assignments, refineResult.assignments);
-  }
-
   return {
-    engine: `programmatic-stage2-3+anthropic:${ANTHROPIC_MODEL}:stage4-6`,
-    usage,
+    engine: `programmatic-terms-fragments+anthropic:${ANTHROPIC_MODEL}:fragment-validation`,
+    usage: validation.usage,
+    observed_residue_terms: validation.residueTerms,
+    connected_fragments: validation.connectedFragments,
+    fragment_validation_feedback: validation.feedback,
     residue_assignment_map: residueMap,
     assignments
   };

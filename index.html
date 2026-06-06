@@ -527,18 +527,23 @@
           <div class="metric"><b id="metricTokensInput">0</b><span>input tokens</span></div>
           <div class="metric"><b id="metricTokensOutput">0</b><span>output tokens</span></div>
         </div>
-        <div class="result-layout">
-          <div>
-            <div class="table-wrap" id="assignmentPreview"></div>
-          </div>
-          <div class="plot-grid">
-            <div class="legend" id="legend"></div>
-            <section class="plot-card"><h3>HSQC: HN vs N</h3><div class="plot-body" id="plotHSQC"></div></section>
-            <section class="plot-card"><h3>HNCACB: HN vs Cx</h3><div class="plot-body" id="plotHNCACB"></div></section>
-            <section class="plot-card"><h3>HN(CO)CACB / CBCA(CO)NH: HN vs Cx</h3><div class="plot-body" id="plotCBCACONH"></div></section>
-          </div>
-        </div>
+        <div class="table-wrap" id="assignmentPreview"></div>
         <div class="inspector" id="experimentResults"></div>
+      </div>
+    </section>
+
+    <section class="panel" id="plotsPanel">
+      <div class="panel-head">
+        <h2>Spectra Plot</h2>
+        <span class="badge">NMR axes</span>
+      </div>
+      <div class="panel-body">
+        <div class="legend" id="legend"></div>
+        <div class="plot-grid">
+          <section class="plot-card"><h3>HSQC: HN vs N</h3><div class="plot-body" id="plotHSQC"></div></section>
+          <section class="plot-card"><h3>HNCACB: HN vs Cx</h3><div class="plot-body" id="plotHNCACB"></div></section>
+          <section class="plot-card"><h3>HN(CO)CACB / CBCA(CO)NH: HN vs Cx</h3><div class="plot-body" id="plotCBCACONH"></div></section>
+        </div>
       </div>
     </section>
   </main>
@@ -591,6 +596,9 @@
       sequence: [],
       assignments: [],
       perExperiment: {},
+      observedResidueTerms: [],
+      connectedFragments: [],
+      fragmentValidationFeedback: [],
       lastEngine: "",
       tokenUsage: {}
     };
@@ -924,7 +932,9 @@
     }
 
     function numberOrNull(value) {
-      const n = Number(String(value ?? "").replace(/[^0-9.+-]/g, ""));
+      const cleaned = String(value ?? "").replace(/[^0-9.+-]/g, "");
+      if (!cleaned) return null;
+      const n = Number(cleaned);
       return Number.isFinite(n) ? n : null;
     }
 
@@ -968,6 +978,9 @@
         }
         const data = await readAssignmentStream(response);
         applyLLMResult(data.assignments || []);
+        state.observedResidueTerms = data.observed_residue_terms || [];
+        state.connectedFragments = data.connected_fragments || [];
+        state.fragmentValidationFeedback = data.fragment_validation_feedback || [];
         state.lastEngine = data.engine || "llm";
         state.tokenUsage = data.usage || state.tokenUsage;
         renderResults();
@@ -1019,6 +1032,10 @@
           } else if (event.type === "progress") {
             if (event.stage === "map_applied") {
               setStatus(`Residue map built with <strong>${formatNumber(event.residue_count)}</strong> anchors; <strong>${formatNumber(event.ambiguous_count)}</strong> peaks queued for local/refine handling. Tokens: <strong>${formatNumber(totalTokens(state.tokenUsage))}</strong>.`, "warn");
+            } else if (event.stage === "fragments_built") {
+              setStatus(`Built <strong>${formatNumber(event.fragment_count)}</strong> connected fragments from <strong>${formatNumber(event.residue_terms)}</strong> pseudo residues. Iteration <strong>${event.iteration}</strong>.`, "warn");
+            } else if (event.stage === "fragments_validated") {
+              setStatus(`LLM validated fragments. Assigned pseudo residues: <strong>${formatNumber(event.assigned_residue_terms)}</strong>; rejected links: <strong>${formatNumber(event.rejected_links)}</strong>. Iteration <strong>${event.iteration}</strong>.`, "warn");
             } else {
               const batchText = event.batch_count ? `batch ${event.batch_index} of ${event.batch_count}` : "next stage";
               const expText = event.batch?.experiment_key ? ` for ${escapeHtml(event.batch.experiment_key)}` : "";
@@ -1075,6 +1092,7 @@
             Hx: numberOrNull(row.Hx),
             N: row.N_num,
             C: row.C_num,
+            C_dimension: carbonDimensionForRow(row),
             raw: row.original
           }))
         };
@@ -1090,6 +1108,14 @@
         })),
         experiments
       };
+    }
+
+    function carbonDimensionForRow(row) {
+      if (row.CA !== undefined && row.CA !== "") return "CA";
+      if (row.CB !== undefined && row.CB !== "") return "CB";
+      if (row.CO !== undefined && row.CO !== "") return "CO";
+      if (row.Cx !== undefined && row.Cx !== "") return "Cx";
+      return "";
     }
 
     function parseSeedAnchors(text) {
@@ -1162,6 +1188,9 @@
     function runHeuristicAssignment() {
       state.assignments = [];
       state.perExperiment = {};
+      state.observedResidueTerms = [];
+      state.connectedFragments = [];
+      state.fragmentValidationFeedback = [];
       state.tokenUsage = {};
       renderTokenUsage();
       if (!state.sequence.length) {
@@ -1527,6 +1556,9 @@
       state.sequence = [];
       state.assignments = [];
       state.perExperiment = {};
+      state.observedResidueTerms = [];
+      state.connectedFragments = [];
+      state.fragmentValidationFeedback = [];
       state.tokenUsage = {};
       $("seqPreview").innerHTML = "";
       $("seqMessage").textContent = "";

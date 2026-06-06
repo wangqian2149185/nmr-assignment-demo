@@ -1,11 +1,11 @@
 # Stage 2: Anchor Selection
 
-Goal: choose `1H-15N HSQC` amide anchor peaks and map them to possible sequence residues. This stage is intended to run programmatically in `server.js`, not as a large LLM table-matching prompt.
+Goal: choose `1H-15N HSQC` amide anchor peaks and group all peaks with matching `HN` and `N` into temporary pseudo-residue terms such as `R001`. This stage is intended to run programmatically in `server.js`, not as a large LLM table-matching prompt.
 
 Anchor modes:
 
-- `auto`: infer anchors from HSQC shifts plus triple-resonance CA/CB evidence.
-- `custom`: honor user-provided seed anchors first, then walk sequentially from those seeds.
+- `auto`: create pseudo-residue terms from HSQC shifts plus matching triple-resonance evidence.
+- `custom`: honor user-provided seed anchors as initial sequence placements for matching pseudo-residue terms.
 
 Custom seed examples:
 

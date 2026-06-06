@@ -105,9 +105,11 @@ E31N-HN
 
 The app avoids asking the LLM to do large numeric matching or write one JSON row for every peak. That was expensive and often lost cross-experiment evidence. The current workflow is:
 
-1. Programmatically build a compact `residue_assignment_map` from HSQC + HNCACB + HN(CO)CACB/CBCA(CO)NH.
-2. Programmatically apply that map back to all uploaded peak lists.
-3. Send only medium/low-confidence or blank rows to a small LLM review/refinement prompt.
+1. Programmatically group peaks with matching `HN` and `N` into `observed_residue_terms` with temporary IDs such as `R001`.
+2. Programmatically connect terms into one or more `connected_fragments` by matching each term's `i-1` Cx evidence against another term's intra Cx evidence.
+3. Send compact connected fragments, not full peak tables, to the LLM for sequence-fragment validation.
+4. Break rejected links and retry validation until all possible terms are placed or three validation rounds produce no new assignments.
+5. Programmatically apply accepted fragment placements back to all uploaded peak lists.
 
 This reduces token use and keeps the global backbone-walk context intact.
 
@@ -117,9 +119,9 @@ This reduces token use and keeps the global backbone-walk context intact.
 
 The backend uses the stage files this way:
 
-- Stage 2/3: implemented programmatically in `server.js`
-- Stage 4: programmatic fill, then LLM review for selected rows
-- Stage 5/6 LLM review call: controller + stage 4 + stage 5 + stage 6
+- Stage 2/3: implemented programmatically in `server.js` as pseudo-residue grouping and fragment building
+- Stage 4: programmatic fill from LLM-validated fragment placements
+- Stage 5/6 LLM call: controller + compact fragments + stage 5 + stage 6
 
 This keeps input tokens smaller and avoids asking the LLM to perform large-scale ppm matching.
 
@@ -140,4 +142,4 @@ The loose set is used to collect possible correlation peaks. The tight set is us
 
 ## Current Scope
 
-This app does not run SkillOpt training. SkillOpt was used earlier to improve and evaluate the assignment instructions. This app uses programmatic stage 2/3 matching and sends only compact review context plus relevant stage instructions to the LLM.
+This app does not run SkillOpt training. SkillOpt was used earlier to improve and evaluate the assignment instructions. This app uses programmatic pseudo-residue grouping and fragment linking, then sends compact fragment-validation context plus relevant stage instructions to the LLM.

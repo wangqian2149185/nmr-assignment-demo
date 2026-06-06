@@ -1,13 +1,13 @@
-# Stage 3: Compact Residue Assignment Map
+# Stage 3: Connected Pseudo-Residue Fragments
 
-Goal: build a compact `residue_assignment_map`, not one output row per peak. This stage is intended to run programmatically in `server.js`; the LLM should only review compact results later.
+Goal: build compact `observed_residue_terms` and `connected_fragments`, not one output row per peak. This stage is intended to run programmatically in `server.js`; the LLM should only review compact connected fragments later.
 
 Use:
 
 - HSQC anchors: `HN`, `N`.
 - HNCACB: intra-residue and possible `i-1` CA/CB correlations.
 - HN(CO)CACB / CBCA(CO)NH: `i-1` CA/CB correlations.
-- Sequence residue-type patterns.
+- Sequence residue-type patterns only after fragments are sent to the LLM for validation.
 
 Experiment rules:
 
@@ -24,26 +24,35 @@ Residue-type clues:
 - Ala has low CB.
 - Proline lacks a standard backbone amide and creates useful sequence gaps.
 
-Output only compact JSON:
+Programmatic intermediate JSON:
 
 ```json
 {
-  "residue_assignment_map": [
+  "connected_fragments": [
     {
-      "anchor_residue": "E31",
-      "hsqc_peak_id": "peak id or empty",
-      "HN": 8.786,
-      "N": 121.04,
-      "CA_i": 56.04,
-      "CB_i": 30.2,
-      "previous_residue": "D30",
-      "CA_i_minus_1": 54.8,
-      "CB_i_minus_1": 42.1,
-      "confidence": "high",
-      "notes": ""
+      "fragment_id": "F001",
+      "residues": [
+        {
+          "temp_id": "R001",
+          "HN": 8.786,
+          "N": 121.04,
+          "intra_carbons": [56.04, 30.2],
+          "previous_carbons": []
+        },
+        {
+          "temp_id": "R002",
+          "HN": 7.950,
+          "N": 118.40,
+          "intra_carbons": [54.8, 42.1],
+          "previous_carbons": [56.04, 30.2]
+        }
+      ],
+      "links": [
+        { "from_temp_id": "R001", "to_temp_id": "R002", "score": 2 }
+      ]
     }
   ]
 }
 ```
 
-Keep low-confidence anchors out of the map or mark them `low`/`ambiguous`.
+Fragments may be short. Multiple disconnected fragments are acceptable when spectra are incomplete.
