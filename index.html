@@ -50,6 +50,16 @@
       color: white;
     }
 
+    button.danger {
+      border-color: #b4232f;
+      background: #c72c3b;
+      color: white;
+    }
+
+    button.hidden {
+      display: none;
+    }
+
     button:disabled {
       cursor: not-allowed;
       opacity: 0.55;
@@ -443,6 +453,7 @@
           <option value="heuristic">Browser heuristic</option>
         </select>
         <button class="primary" id="runBtn">Run assignment</button>
+        <button class="danger hidden" id="stopBtn">Stop</button>
         <button id="downloadBtn" disabled>Download assigned CSV</button>
         <button id="clearBtn">Clear all</button>
       </div>
@@ -586,6 +597,8 @@
 
     let assignButtonTimer = null;
     let assignButtonFrame = 0;
+    let currentAssignmentController = null;
+    let assignmentStopRequested = false;
 
     const $ = id => document.getElementById(id);
 
@@ -935,6 +948,9 @@
         return;
       }
       $("runBtn").disabled = true;
+      $("stopBtn").classList.remove("hidden");
+      assignmentStopRequested = false;
+      currentAssignmentController = new AbortController();
       state.tokenUsage = {};
       renderTokenUsage();
       startAssignButtonAnimation();
@@ -943,7 +959,8 @@
         const response = await fetch("/api/assign", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(buildAssignmentPayload())
+          body: JSON.stringify(buildAssignmentPayload()),
+          signal: currentAssignmentController.signal
         });
         if (!response.ok) {
           const data = await response.json().catch(() => ({}));
@@ -956,12 +973,28 @@
         renderResults();
         setStatus(`<strong>LLM assignment complete.</strong> Used ${formatNumber(totalTokens(state.tokenUsage))} tokens. Review confidence, notes, and plots before downloading.`, "ok");
       } catch (error) {
-        setStatus(`LLM assignment failed: ${escapeHtml(error.message)}. Confirm the local server is running with an API key, or switch to Browser heuristic mode.`, "error");
+        if (assignmentStopRequested || error.name === "AbortError") {
+          setStatus("LLM assignment stopped by user.", "warn");
+        } else {
+          setStatus(`LLM assignment failed: ${escapeHtml(error.message)}. Confirm the local server is running with an API key, or switch to Browser heuristic mode.`, "error");
+        }
       } finally {
         stopAssignButtonAnimation();
+        currentAssignmentController = null;
+        assignmentStopRequested = false;
+        $("stopBtn").classList.add("hidden");
         $("runBtn").disabled = false;
         $("runBtn").textContent = "Run assignment";
       }
+    }
+
+    function stopCurrentAssignment() {
+      assignmentStopRequested = true;
+      if (currentAssignmentController) currentAssignmentController.abort();
+      stopAssignButtonAnimation();
+      $("stopBtn").classList.add("hidden");
+      $("runBtn").textContent = "Run assignment";
+      setStatus("Stopping LLM assignment...", "warn");
     }
 
     async function readAssignmentStream(response) {
@@ -1515,6 +1548,7 @@
     }
 
     $("runBtn").addEventListener("click", runAssignment);
+    $("stopBtn").addEventListener("click", stopCurrentAssignment);
     $("downloadBtn").addEventListener("click", downloadAssignedCsv);
     $("clearBtn").addEventListener("click", clearAll);
     document.querySelectorAll('input[name="anchorMode"]').forEach(input => {

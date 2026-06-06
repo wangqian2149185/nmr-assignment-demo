@@ -316,11 +316,11 @@ async function callAnthropic(payload) {
   };
 }
 
-async function callAnthropicStream(payload, onEvent) {
-  return callAnthropicPromptStream(buildPrompt(payload), onEvent);
+async function callAnthropicStream(payload, onEvent, signal) {
+  return callAnthropicPromptStream(buildPrompt(payload), onEvent, signal);
 }
 
-async function callAnthropicPromptStream(prompt, onEvent) {
+async function callAnthropicPromptStream(prompt, onEvent, signal) {
   if (!ANTHROPIC_API_KEY) {
     throw new Error("Missing ANTHROPIC_API_KEY. Copy .env.example to .env and add your key.");
   }
@@ -331,6 +331,7 @@ async function callAnthropicPromptStream(prompt, onEvent) {
       "x-api-key": ANTHROPIC_API_KEY,
       "anthropic-version": "2023-06-01"
     },
+    signal,
     body: JSON.stringify({
       model: ANTHROPIC_MODEL,
       max_tokens: ANTHROPIC_MAX_TOKENS,
@@ -587,7 +588,7 @@ function mergeAssignments(base, refined) {
   });
 }
 
-async function callAnthropicResidueMapWorkflowStream(payload, onEvent) {
+async function callAnthropicResidueMapWorkflowStream(payload, onEvent, signal) {
   const usage = {};
   let previousUsage = {};
   const mapResult = await callAnthropicPromptStream(buildResidueMapPrompt(payload), event => {
@@ -599,7 +600,7 @@ async function callAnthropicResidueMapWorkflowStream(payload, onEvent) {
     previousUsage = event.usage || {};
     addUsage(usage, delta);
     onEvent({ type: "usage", usage });
-  });
+  }, signal);
   let { residueMap, assignments } = applyResidueMapToPeaks(payload, mapResult.residue_assignment_map);
   onEvent({ type: "progress", stage: "map_applied", residue_count: residueMap.length, ambiguous_count: ambiguousAssignments(assignments).length });
 
@@ -615,7 +616,7 @@ async function callAnthropicResidueMapWorkflowStream(payload, onEvent) {
       previousUsage = event.usage || {};
       addUsage(usage, delta);
       onEvent({ type: "usage", usage });
-    });
+    }, signal);
     assignments = mergeAssignments(assignments, refineResult.assignments);
   }
 
@@ -627,7 +628,7 @@ async function callAnthropicResidueMapWorkflowStream(payload, onEvent) {
   };
 }
 
-async function callAnthropicBatchedStream(payload, onEvent) {
+async function callAnthropicBatchedStream(payload, onEvent, signal) {
   const batches = buildAssignmentBatches(payload);
   if (!batches.length) {
     return { engine: `anthropic:${ANTHROPIC_MODEL}`, usage: {}, assignments: [] };
@@ -649,7 +650,7 @@ async function callAnthropicBatchedStream(payload, onEvent) {
       previousUsage = event.usage || {};
       addUsage(usage, delta);
       onEvent({ type: "usage", usage });
-    });
+    }, signal);
     assignments.push(...result.assignments);
     onEvent({ type: "progress", batch_index: index + 1, batch_count: batches.length, completed: true, batch: batches[index].batch });
   }
@@ -674,15 +675,21 @@ const server = http.createServer(async (req, res) => {
     if (req.method === "POST" && req.url === "/api/assign") {
       const body = await readBody(req);
       const payload = JSON.parse(body || "{}");
+      const abortController = new AbortController();
+      req.on("close", () => {
+        if (!res.writableEnded) abortController.abort();
+      });
       res.writeHead(200, {
         "content-type": "application/x-ndjson; charset=utf-8",
         "cache-control": "no-store"
       });
       try {
-        const result = await callAnthropicResidueMapWorkflowStream(payload, event => sendNdjson(res, event));
+        const result = await callAnthropicResidueMapWorkflowStream(payload, event => sendNdjson(res, event), abortController.signal);
         sendNdjson(res, { type: "result", ...result });
       } catch (error) {
-        sendNdjson(res, { type: "error", error: error.message || String(error) });
+        if (!abortController.signal.aborted) {
+          sendNdjson(res, { type: "error", error: error.message || String(error) });
+        }
       } finally {
         res.end();
       }
