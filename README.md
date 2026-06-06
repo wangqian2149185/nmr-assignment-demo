@@ -61,6 +61,8 @@ http://localhost:8765
 - Lets the user upload a protein sequence as FASTA, one-letter text, or tabular index/residue columns.
 - Sends the mapped data plus `skill.md` to the local backend.
 - The backend calls Anthropic with the user's own API key.
+- The backend first asks the LLM for a compact `residue_assignment_map`, then fills all peak-list rows programmatically.
+- Only low-confidence or blank rows are sent to a small second refinement prompt.
 - Shows assigned peak lists in tables.
 - Draws three NMR-style reversed-axis plots:
   - HSQC: `HN` vs `N`
@@ -76,6 +78,31 @@ The UI has two modes:
 - `Browser heuristic`: runs a simple built-in fallback in the browser without an API key.
 
 For real assignment work, use `LLM backend`.
+
+## Anchor Modes
+
+The UI also has two anchor modes:
+
+- `Auto anchors`: the model searches for the best sequence placement using HSQC, HNCACB, HN(CO)CACB/CBCA(CO)NH, residue-type CA/CB patterns, Gly/Pro clues, and sequential walks.
+- `Custom seed anchors`: the user supplies one or more known anchors, then the model uses those seeds first and walks from them.
+
+Accepted seed examples:
+
+```text
+HSQC_12,E31
+8.786,121.04,E31
+E31N-HN
+```
+
+## Runtime Workflow
+
+The app avoids asking the LLM to write one JSON row for every peak. That was expensive and often lost cross-experiment evidence. The current workflow is:
+
+1. Build a compact `residue_assignment_map` from HSQC + HNCACB + HN(CO)CACB/CBCA(CO)NH.
+2. Programmatically apply that map back to all uploaded peak lists.
+3. Send only ambiguous or low-confidence rows to a small refinement prompt.
+
+This reduces token use and keeps the global backbone-walk context intact.
 
 ## Security Notes
 

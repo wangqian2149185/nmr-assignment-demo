@@ -395,6 +395,38 @@
       color: var(--muted);
       font-size: 12px;
     }
+
+    .seed-controls {
+      display: grid;
+      gap: 10px;
+    }
+
+    .seed-mode {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      align-items: center;
+    }
+
+    .seed-editor {
+      display: none;
+      gap: 8px;
+    }
+
+    .seed-editor.active {
+      display: grid;
+    }
+
+    textarea {
+      width: 100%;
+      min-height: 88px;
+      resize: vertical;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      padding: 8px;
+      background: #fff;
+      color: var(--ink);
+    }
   </style>
 </head>
 <body>
@@ -447,6 +479,23 @@
         </div>
         <div id="seqMessage" class="tiny"></div>
         <div class="table-wrap" id="seqPreview"></div>
+      </div>
+    </section>
+
+    <section class="panel">
+      <div class="panel-head">
+        <h2>Anchor Mode</h2>
+        <span class="badge" id="anchorBadge">auto</span>
+      </div>
+      <div class="panel-body seed-controls">
+        <div class="seed-mode">
+          <label><input type="radio" name="anchorMode" value="auto" checked> Auto anchors</label>
+          <label><input type="radio" name="anchorMode" value="custom"> Custom seed anchors</label>
+        </div>
+        <div class="seed-editor" id="seedEditor">
+          <div class="tiny">Enter one or more seed anchors, one per line. Accepted examples: <code>HSQC_peak_12,E31</code>, <code>8.786,121.04,E31</code>, or <code>E31N-HN</code>.</div>
+          <textarea id="seedAnchors" placeholder="peak_id,residue_label&#10;or HN,N,residue_label"></textarea>
+        </div>
       </div>
     </section>
 
@@ -933,9 +982,13 @@
             renderTokenUsage();
             setStatus(`Assigning with LLM backend. Tokens used so far: <strong>${formatNumber(totalTokens(state.tokenUsage))}</strong>.`, "warn");
           } else if (event.type === "progress") {
-            const batchText = event.batch_count ? `batch ${event.batch_index} of ${event.batch_count}` : "next batch";
-            const expText = event.batch?.experiment_key ? ` for ${escapeHtml(event.batch.experiment_key)}` : "";
-            setStatus(`Assigning ${batchText}${expText}. Tokens used so far: <strong>${formatNumber(totalTokens(state.tokenUsage))}</strong>.`, "warn");
+            if (event.stage === "map_applied") {
+              setStatus(`Residue map built with <strong>${formatNumber(event.residue_count)}</strong> anchors; <strong>${formatNumber(event.ambiguous_count)}</strong> peaks queued for local/refine handling. Tokens: <strong>${formatNumber(totalTokens(state.tokenUsage))}</strong>.`, "warn");
+            } else {
+              const batchText = event.batch_count ? `batch ${event.batch_index} of ${event.batch_count}` : "next stage";
+              const expText = event.batch?.experiment_key ? ` for ${escapeHtml(event.batch.experiment_key)}` : "";
+              setStatus(`Assigning ${batchText}${expText}. Tokens used so far: <strong>${formatNumber(totalTokens(state.tokenUsage))}</strong>.`, "warn");
+            }
           } else if (event.type === "result") {
             result = event;
           } else if (event.type === "error") {
@@ -992,6 +1045,8 @@
         };
       }
       return {
+        anchor_mode: document.querySelector('input[name="anchorMode"]:checked')?.value || "auto",
+        seed_anchors: parseSeedAnchors($("seedAnchors").value || ""),
         sequence: state.sequence.map(r => ({
           index: r.index,
           one_letter: r.one,
@@ -1000,6 +1055,25 @@
         })),
         experiments
       };
+    }
+
+    function parseSeedAnchors(text) {
+      return String(text || "")
+        .split(/\n/)
+        .map(line => line.trim())
+        .filter(Boolean)
+        .map(line => {
+          const parts = line.split(/[,;\t]/).map(part => part.trim()).filter(Boolean);
+          const assignment = line.match(/([A-Z]\d+)N-HN/i);
+          if (assignment) return { residue_label: assignment[1].toUpperCase(), raw: line };
+          if (parts.length >= 3 && isFiniteNumber(parts[0]) && isFiniteNumber(parts[1])) {
+            return { HN: Number(parts[0]), N: Number(parts[1]), residue_label: parts[2].toUpperCase(), raw: line };
+          }
+          if (parts.length >= 2) {
+            return { peak_id: parts[0], residue_label: parts[1].toUpperCase(), raw: line };
+          }
+          return { raw: line };
+        });
     }
 
     function applyLLMResult(assignments) {
@@ -1076,16 +1150,29 @@
     }
 
     function assignAnchors(hsqcRows) {
+      const payloadSeeds = parseSeedAnchors($("seedAnchors").value || "");
+      const useCustom = document.querySelector('input[name="anchorMode"]:checked')?.value === "custom";
       const candidates = state.sequence.filter(r => r.one !== "P");
       const used = new Set();
+      const anchors = [];
+      if (useCustom) {
+        for (const seed of payloadSeeds) {
+          const residue = state.sequence.find(r => r.label === String(seed.residue_label || "").toUpperCase());
+          if (!residue) continue;
+          const row = hsqcRows.find(item => seed.peak_id ? item.peak_id === seed.peak_id : near(item.HN_num, seed.HN, TOL.H) && near(item.N_num, seed.N, TOL.N));
+          if (!row) continue;
+          used.add(residue.label);
+          anchors.push({ ...row, residue, score: 99, confidence: "high" });
+        }
+      }
       const scored = hsqcRows.map(row => {
         const options = candidates.map(residue => ({ residue, score: scoreAnchor(row, residue) }))
           .sort((a, b) => b.score - a.score);
         return { row, options };
       }).sort((a, b) => b.options[0].score - a.options[0].score);
 
-      const anchors = [];
       for (const item of scored) {
+        if (anchors.some(anchor => anchor.peak_id === item.row.peak_id)) continue;
         const best = item.options.find(option => !used.has(option.residue.label));
         if (best && best.score >= 1.2) {
           used.add(best.residue.label);
@@ -1313,7 +1400,7 @@
       const xMin = Math.min(...xs) - 0.2, xMax = Math.max(...xs) + 0.2;
       const yMin = Math.min(...ys) - 1, yMax = Math.max(...ys) + 1;
       const x = value => pad.left + (xMax - value) / (xMax - xMin || 1) * (width - pad.left - pad.right);
-      const y = value => pad.top + (yMax - value) / (yMax - yMin || 1) * (height - pad.top - pad.bottom);
+      const y = value => pad.top + (value - yMin) / (yMax - yMin || 1) * (height - pad.top - pad.bottom);
       const ticks = (min, max, n) => Array.from({ length: n }, (_, i) => min + (max - min) * i / (n - 1));
       const xTicks = ticks(xMin, xMax, 5);
       const yTicks = ticks(yMin, yMax, 5);
@@ -1331,7 +1418,7 @@
           ${xTicks.map(t => `<line x1="${x(t)}" y1="${height - pad.bottom}" x2="${x(t)}" y2="${height - pad.bottom + 5}" stroke="#38423e"></line><text x="${x(t)}" y="${height - 16}" text-anchor="middle" font-size="10" fill="#66706b">${t.toFixed(2)}</text>`).join("")}
           ${yTicks.map(t => `<line x1="${pad.left - 5}" y1="${y(t)}" x2="${pad.left}" y2="${y(t)}" stroke="#38423e"></line><text x="${pad.left - 8}" y="${y(t) + 3}" text-anchor="end" font-size="10" fill="#66706b">${t.toFixed(1)}</text>`).join("")}
           <text x="${width / 2}" y="${height - 3}" text-anchor="middle" font-size="11" fill="#34403b">${xKey} ppm (larger right to left)</text>
-          <text transform="translate(13 ${height / 2}) rotate(-90)" text-anchor="middle" font-size="11" fill="#34403b">${yKey} ppm (larger bottom to top)</text>
+          <text transform="translate(13 ${height / 2}) rotate(-90)" text-anchor="middle" font-size="11" fill="#34403b">${yKey} ppm (larger top to bottom)</text>
           ${circles}
         </svg>`;
     }
@@ -1426,6 +1513,13 @@
     $("runBtn").addEventListener("click", runAssignment);
     $("downloadBtn").addEventListener("click", downloadAssignedCsv);
     $("clearBtn").addEventListener("click", clearAll);
+    document.querySelectorAll('input[name="anchorMode"]').forEach(input => {
+      input.addEventListener("change", () => {
+        const mode = document.querySelector('input[name="anchorMode"]:checked')?.value || "auto";
+        $("seedEditor").classList.toggle("active", mode === "custom");
+        $("anchorBadge").textContent = mode === "custom" ? "custom seeds" : "auto";
+      });
+    });
     setupSequence();
     populateSequenceControls();
     renderExperiments();
