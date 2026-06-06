@@ -1009,16 +1009,16 @@
     function startAssignButtonAnimation() {
       const frames = [
         "Rolling..--",
-        "Rolling.. \\",
-        "Rolling.. |",
-        "Rolling.. /"
+        "Rolling.. \\ ",
+        "Rolling.. | ",
+        "Rolling.. / "
       ];
       assignButtonFrame = 0;
       $("runBtn").textContent = frames[assignButtonFrame];
       assignButtonTimer = setInterval(() => {
         assignButtonFrame = (assignButtonFrame + 1) % frames.length;
         $("runBtn").textContent = frames[assignButtonFrame];
-      }, 200);
+      }, 100);
     }
 
     function stopAssignButtonAnimation() {
