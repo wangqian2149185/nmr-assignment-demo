@@ -104,6 +104,15 @@ The app avoids asking the LLM to write one JSON row for every peak. That was exp
 
 This reduces token use and keeps the global backbone-walk context intact.
 
+## Default Tolerances
+
+The app and `skill.md` use two-stage tolerances:
+
+- Candidate search: `H = 0.20 ppm`, `C = 0.50 ppm`, `N = 0.80 ppm`
+- Confirmation: `H = 0.04 ppm`, `C = 0.25 ppm`, `N = 0.30 ppm`
+
+The loose set is used to collect possible correlation peaks. The tight set is used to confirm matches and raise confidence.
+
 ## Security Notes
 
 - Never put API keys in `index.html`.

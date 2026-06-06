@@ -52,13 +52,21 @@ For detailed experiment-specific rules and conflict handling, read `references/a
 
 ## Matching Tolerances
 
-Use user-provided tolerances when available. Otherwise, for experimental peak matching start with broad correlation windows:
+Use user-provided tolerances when available. Otherwise, use two-stage tolerances:
+
+Candidate search / loose correlation windows:
 
 - `1H` dimension: about 0.2 ppm.
 - `13C` dimension: about 0.5 ppm.
 - `15N` dimension: about 0.8 ppm.
 
-Peaks within these windows can be treated as possible correlation peaks, not necessarily unique matches. Narrow the candidate set using sequential consistency and residue-type carbon patterns.
+Confirmation / tight matching windows:
+
+- `1H` dimension: about 0.04 ppm.
+- `13C` dimension: about 0.25 ppm.
+- `15N` dimension: about 0.3 ppm.
+
+Use the loose windows to collect possible correlation peaks. Use the tight windows to raise confidence or confirm a proposed match. Peaks inside the loose windows are candidates, not necessarily unique matches. Narrow the candidate set using sequential consistency and residue-type carbon patterns.
 
 ## Conservative Assignment Rules
 

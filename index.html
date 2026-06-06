@@ -534,7 +534,9 @@
 
   <script>
     const DIMENSIONS = ["ignore", "peak_id", "assignment", "HN", "Hx", "N", "CA", "CB", "Cx", "CO", "intensity", "sign"];
-    const TOL = { H: 0.2, C: 0.5, N: 0.8 };
+    const LOOSE_TOL = { H: 0.2, C: 0.5, N: 0.8 };
+    const CONFIRM_TOL = { H: 0.04, C: 0.25, N: 0.3 };
+    const TOL = LOOSE_TOL;
     const THREE_TO_ONE = {
       ALA: "A", ARG: "R", ASN: "N", ASP: "D", CYS: "C", CYSS: "C", GLN: "Q", GLU: "E",
       GLY: "G", HIS: "H", ILE: "I", LEU: "L", LYS: "K", MET: "M", PHE: "F", PRO: "P",
@@ -1305,7 +1307,9 @@
       if (!anchor?.residue || !source) return "low";
       if (["CBCACONH", "HNCO", "HNCOCA"].includes(key) && !previousResidue(anchor.residue)) return "low";
       if (row.C_num !== null && source && closenessToResidue(row.C_num, source) < 0.25 && !["HSQC", "HNCO", "HBHACONH"].includes(key)) return "medium";
-      return anchor.confidence || "medium";
+      const anchorConfirmed = near(anchor.HN_num, row.HN_num, CONFIRM_TOL.H) && near(anchor.N_num, row.N_num, CONFIRM_TOL.N);
+      if (key === "HSQC") return anchorConfirmed ? "high" : (anchor.confidence || "medium");
+      return anchorConfirmed ? (anchor.confidence || "medium") : "medium";
     }
 
     function makeAssignmentLabel(key, anchor, source, atoms) {

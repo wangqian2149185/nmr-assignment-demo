@@ -13,7 +13,9 @@ const ANTHROPIC_MAX_TOKENS = Number(process.env.ANTHROPIC_MAX_TOKENS || 24000);
 const ASSIGNMENT_BATCH_SIZE = Number(process.env.ASSIGNMENT_BATCH_SIZE || 25);
 const AMBIGUOUS_REFINE_LIMIT = Number(process.env.AMBIGUOUS_REFINE_LIMIT || 40);
 const MAX_BODY_BYTES = 8 * 1024 * 1024;
-const TOL = { H: 0.2, C: 0.5, N: 0.8 };
+const LOOSE_TOL = { H: 0.2, C: 0.5, N: 0.8 };
+const CONFIRM_TOL = { H: 0.04, C: 0.25, N: 0.3 };
+const TOL = LOOSE_TOL;
 const CA_CB = {
   A: { CA: 52.5, CB: 19.0 }, R: { CA: 56.1, CB: 30.8 }, N: { CA: 53.2, CB: 38.9 },
   D: { CA: 54.6, CB: 40.8 }, C: { CA: 58.3, CB: 28.2 }, Q: { CA: 55.8, CB: 29.2 },
@@ -149,6 +151,7 @@ function buildPrompt(payload) {
     "- Proline has no normal backbone amide peak.",
     "- First residue is often absent from HSQC.",
     "- If a peak cannot be assigned confidently, keep residue fields blank and confidence low or ambiguous.",
+    "- Use two-stage tolerances: loose candidate search H=0.20 ppm, C=0.50 ppm, N=0.80 ppm; confirmation H=0.04 ppm, C=0.25 ppm, N=0.30 ppm.",
     "- Do not include markdown, code fences, comments, prose, or explanations outside the JSON object.",
     "- Output compact JSON. Do not pretty-print. Do not add whitespace unless required by JSON syntax.",
     "- Keep notes empty unless there is a critical warning. If used, notes must be 0-5 words.",
@@ -198,6 +201,7 @@ function buildResidueMapPrompt(payload) {
     "- Map each confident HSQC amide anchor to at most one sequence residue.",
     "- If anchor_mode is custom, honor seed_anchors first and walk sequentially from those seeds.",
     "- If anchor_mode is auto, use residue-type CA/CB patterns, Gly no CB, Ser/Thr high CB, Ala low CB, Pro gaps, and sequence pattern matching.",
+    "- Use two-stage tolerances: loose candidate search H=0.20 ppm, C=0.50 ppm, N=0.80 ppm; confirmation H=0.04 ppm, C=0.25 ppm, N=0.30 ppm.",
     "- HNCACB contains intra-residue and possible i-1 CA/CB for the same amide anchor.",
     "- HN(CO)CACB/CBCA(CO)NH contains i-1 CA/CB for the same amide anchor.",
     "- Leave uncertain anchors out of the map or mark confidence low/ambiguous.",
@@ -487,15 +491,19 @@ function assignmentForRow(experimentKey, row, mapEntry, sequence) {
   const c = toNum(row.C);
   const anchor = mapEntry?.anchor_residue || "";
   if (!anchor) return blankAssignment(experimentKey, row, "no anchor");
+  const anchorConfirmed = near(mapEntry.HN, toNum(row.HN), CONFIRM_TOL.H) && near(mapEntry.N, toNum(row.N), CONFIRM_TOL.N);
   let source = anchor;
   let relation = "intra";
   let atom = "";
+  let atomDistance = 0;
   if (experimentKey === "HSQC") {
     atom = "N";
   } else if (["CBCACONH", "HNCOCA"].includes(experimentKey)) {
     source = mapEntry.previous_residue || previousResidue(sequence, anchor)?.residue_label || "";
     relation = source ? "sequential_i_minus_1" : "";
-    atom = closestAtom(c, [["CA", mapEntry.CA_i_minus_1], ["CB", mapEntry.CB_i_minus_1]]).atom || "Cx";
+    const best = closestAtom(c, [["CA", mapEntry.CA_i_minus_1], ["CB", mapEntry.CB_i_minus_1]]);
+    atom = best.atom || "Cx";
+    atomDistance = best.distance;
   } else if (experimentKey === "HNCO") {
     source = mapEntry.previous_residue || previousResidue(sequence, anchor)?.residue_label || "";
     relation = source ? "sequential_i_minus_1" : "";
@@ -507,15 +515,19 @@ function assignmentForRow(experimentKey, row, mapEntry, sequence) {
       source = mapEntry.previous_residue || previousResidue(sequence, anchor)?.residue_label || "";
       relation = source ? "sequential_i_minus_1" : "";
       atom = prev.atom || "Cx";
+      atomDistance = prev.distance;
     } else {
       atom = intra.atom || "Cx";
+      atomDistance = intra.distance;
     }
   } else {
     atom = c === null ? "Hx" : "Cx";
   }
   const atoms = experimentKey === "HSQC" ? "N,HN" : `N,${atom || "Cx"},HN`;
   const assignedLabel = experimentKey === "HSQC" ? `${anchor}N-HN` : `${anchor}N-${atom || "Cx"}-HN`;
+  const carbonConfirmed = experimentKey === "HSQC" || experimentKey === "HNCO" || atomDistance <= CONFIRM_TOL.C;
   const low = !source || ["low", "ambiguous"].includes(String(mapEntry.confidence || "").toLowerCase());
+  const confidence = low ? (mapEntry.confidence || "low") : (anchorConfirmed && carbonConfirmed ? "high" : "medium");
   return {
     experiment_key: experimentKey,
     peak_id: row.peak_id,
@@ -524,7 +536,7 @@ function assignmentForRow(experimentKey, row, mapEntry, sequence) {
     assigned_source_residue: source,
     assigned_source_atoms: atoms,
     assigned_relation: relation,
-    confidence: low ? (mapEntry.confidence || "low") : "high",
+    confidence,
     notes: mapEntry.notes || "map",
     HN: toNum(row.HN),
     N: toNum(row.N),
