@@ -11,6 +11,9 @@ const ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY || "";
 const ANTHROPIC_MODEL = process.env.ANTHROPIC_MODEL || "claude-sonnet-4-5";
 const ANTHROPIC_MAX_TOKENS = Number(process.env.ANTHROPIC_MAX_TOKENS || 24000);
 const AMBIGUOUS_REFINE_LIMIT = Number(process.env.AMBIGUOUS_REFINE_LIMIT || 40);
+const FRAGMENT_VALIDATION_BATCH_SIZE = Number(process.env.FRAGMENT_VALIDATION_BATCH_SIZE || 4);
+const FRAGMENT_VALIDATION_MAX_BATCHES = Number(process.env.FRAGMENT_VALIDATION_MAX_BATCHES || 8);
+const FRAGMENT_VALIDATION_MAX_TOKENS = Number(process.env.FRAGMENT_VALIDATION_MAX_TOKENS || 4000);
 const MAX_BODY_BYTES = 8 * 1024 * 1024;
 const LOOSE_TOL = { H: 0.2, C: 0.5, N: 0.8 };
 const CONFIRM_TOL = { H: 0.04, C: 0.25, N: 0.3 };
@@ -116,31 +119,32 @@ function readBody(req) {
   });
 }
 
-function buildFragmentValidationPrompt(payload, fragments, iteration, previousFeedback) {
+function buildFragmentValidationPrompt(payload, fragments, iteration, batchIndex, previousFeedback) {
   const skill = loadStageSkills([
     "stage_5_refine_ambiguous.md",
     "stage_6_validation.md"
   ]);
   const data = {
     iteration,
+    batch_index: batchIndex,
     sequence: payload.sequence || [],
     connected_fragments: fragments,
     previous_feedback: previousFeedback || []
   };
   return [
-    "You are validating connected pseudo-residue fragments from protein NMR spectra.",
-    "The app has already grouped peaks by matching HN and N, then connected pseudo residues with i-1 Cx evidence.",
-    "Your job is to decide whether each fragment can be a contiguous part of the uploaded protein sequence.",
-    "Use HN, N, intra Cx, i-1 Cx, Gly N range, Gly no CB, Ser/Thr high CB, Ala low CB, and conservative NMR chemical-shift reasoning.",
-    "Do not invent peaks. Do not assign a pseudo residue if the evidence conflicts with the sequence.",
-    "Return ONLY compact JSON with this shape:",
-    "{\"placements\":[{\"fragment_id\":\"F001\",\"start_index\":31,\"confidence\":\"high|medium|low\",\"residue_labels_by_temp_id\":{\"R001\":\"E31\"},\"mismatches\":[{\"temp_id\":\"R002\",\"reason\":\"0-10 words\"}]}],\"rejected_links\":[{\"from_temp_id\":\"R001\",\"to_temp_id\":\"R002\",\"reason\":\"0-10 words\"}],\"notes\":\"0-20 words\"}",
+    "Validate a SMALL BATCH of connected pseudo-residue fragments from protein NMR spectra.",
+    "The app grouped peaks by matching HN/N and linked pseudo residues with i-1 Cx evidence.",
+    "Decide whether each fragment can be a contiguous part of the uploaded protein sequence.",
+    "Use conservative chemical-shift reasoning: HN, N, intra Cx, i-1 Cx, Gly N 90-110 and no CB, Ser/Thr high CB, Ala low CB, Pro amide gaps.",
+    "Return ONLY compact JSON. Use this short-key schema:",
+    "{\"p\":[{\"f\":\"F001\",\"s\":31,\"c\":\"h|m|l\",\"m\":{\"R001\":\"E31\"}}],\"x\":[{\"a\":\"R001\",\"b\":\"R002\"}]}",
     "Rules:",
-    "- start_index is the sequence index for the first pseudo residue in the fragment.",
-    "- residue_labels_by_temp_id may include only confidently placed pseudo residues.",
-    "- If a fragment is not a real sequence segment, return it with low confidence or omit it.",
-    "- Identify mismatched pseudo residues when Cx/N/HN evidence does not fit the proposed residue type.",
-    "- Use rejected_links for connections the app should break before trying again.",
+    "- p means accepted placements; f=fragment_id, s=start sequence index, c=confidence, m=temp_id to residue_label map.",
+    "- x means rejected links; a=from_temp_id, b=to_temp_id.",
+    "- Omit uncertain fragments instead of explaining them.",
+    "- Include only confident or useful placements. Do not return every fragment.",
+    "- No notes, no mismatches, no prose, no markdown.",
+    "- Keep output under 2000 tokens.",
     "- No markdown. No prose outside JSON.",
     "SKILL_CONTEXT:",
     skill,
@@ -191,7 +195,7 @@ function extractBalancedJsonObject(text) {
   return "";
 }
 
-async function callAnthropicPromptStream(prompt, onEvent, signal) {
+async function callAnthropicPromptStream(prompt, onEvent, signal, maxTokens = ANTHROPIC_MAX_TOKENS) {
   if (!ANTHROPIC_API_KEY) {
     throw new Error("Missing ANTHROPIC_API_KEY. Copy .env.example to .env and add your key.");
   }
@@ -205,7 +209,7 @@ async function callAnthropicPromptStream(prompt, onEvent, signal) {
     signal,
     body: JSON.stringify({
       model: ANTHROPIC_MODEL,
-      max_tokens: ANTHROPIC_MAX_TOKENS,
+      max_tokens: maxTokens,
       temperature: 0,
       stream: true,
       messages: [
@@ -267,7 +271,7 @@ async function callAnthropicPromptStream(prompt, onEvent, signal) {
   }
 
   if (stopReason === "max_tokens") {
-    throw new Error(`Model output hit the ${ANTHROPIC_MAX_TOKENS} token limit before completing JSON. Try fewer peak-list rows or raise ANTHROPIC_MAX_TOKENS in .env.`);
+    throw new Error(`Model output hit the ${maxTokens} token limit before completing JSON. Try lowering FRAGMENT_VALIDATION_BATCH_SIZE or raising FRAGMENT_VALIDATION_MAX_TOKENS in .env.`);
   }
   const parsed = parseModelJson(text);
   return {
@@ -277,6 +281,8 @@ async function callAnthropicPromptStream(prompt, onEvent, signal) {
     residue_assignment_map: Array.isArray(parsed.residue_assignment_map) ? parsed.residue_assignment_map : [],
     placements: Array.isArray(parsed.placements) ? parsed.placements : [],
     rejected_links: Array.isArray(parsed.rejected_links) ? parsed.rejected_links : [],
+    p: Array.isArray(parsed.p) ? parsed.p : [],
+    x: Array.isArray(parsed.x) ? parsed.x : [],
     notes: parsed.notes || ""
   };
 }
@@ -487,6 +493,27 @@ function normalizeRejectedLinks(feedback) {
   return rejected;
 }
 
+function normalizeFragmentValidationResult(result) {
+  const placements = [];
+  for (const item of result.p || result.placements || []) {
+    const residueMap = item.m || item.residue_labels_by_temp_id || {};
+    placements.push({
+      fragment_id: item.f || item.fragment_id || "",
+      start_index: item.s || item.start_index || "",
+      confidence: item.c === "h" ? "high" : item.c === "m" ? "medium" : item.c === "l" ? "low" : (item.confidence || "medium"),
+      residue_labels_by_temp_id: residueMap
+    });
+  }
+  const rejected_links = [];
+  for (const item of result.x || result.rejected_links || []) {
+    rejected_links.push({
+      from_temp_id: item.a || item.from_temp_id || "",
+      to_temp_id: item.b || item.to_temp_id || ""
+    });
+  }
+  return { placements, rejected_links };
+}
+
 function placementMapFromFeedback(feedback) {
   const out = new Map();
   for (const item of feedback || []) {
@@ -499,6 +526,20 @@ function placementMapFromFeedback(feedback) {
     }
   }
   return out;
+}
+
+function compactFeedbackForPrompt(feedback) {
+  return (feedback || []).map(item => ({
+    p: (item.placements || []).map(placement => ({
+      f: placement.fragment_id || "",
+      c: placement.confidence || "",
+      m: placement.residue_labels_by_temp_id || {}
+    })),
+    x: (item.rejected_links || []).map(link => ({
+      a: link.from_temp_id || "",
+      b: link.to_temp_id || ""
+    }))
+  }));
 }
 
 function seedPlacementMap(payload, terms) {
@@ -526,6 +567,16 @@ function applyPlacementsToTerms(terms, placements) {
   });
 }
 
+function fragmentBatches(fragments) {
+  const sorted = [...fragments].sort((a, b) => b.length - a.length);
+  const limited = sorted.slice(0, Math.max(0, FRAGMENT_VALIDATION_BATCH_SIZE * FRAGMENT_VALIDATION_MAX_BATCHES));
+  const batches = [];
+  for (let start = 0; start < limited.length; start += FRAGMENT_VALIDATION_BATCH_SIZE) {
+    batches.push(limited.slice(start, start + FRAGMENT_VALIDATION_BATCH_SIZE));
+  }
+  return batches;
+}
+
 async function validateFragmentsWithLLM(payload, terms, onEvent, signal) {
   const usage = {};
   const feedback = [];
@@ -542,26 +593,28 @@ async function validateFragmentsWithLLM(payload, terms, onEvent, signal) {
     onEvent({ type: "progress", stage: "fragments_built", iteration, residue_terms: terms.length, fragment_count: fragments.length });
     if (!fragments.length || !ANTHROPIC_API_KEY || AMBIGUOUS_REFINE_LIMIT === 0) break;
 
-    let previousUsage = {};
-    const result = await callAnthropicPromptStream(buildFragmentValidationPrompt(payload, compactFragmentsForLLM(fragments), iteration, feedback), event => {
-      if (event.type !== "usage") return onEvent(event);
-      const delta = {};
-      for (const [key, value] of Object.entries(event.usage || {})) {
-        if (typeof value === "number") delta[key] = value - (previousUsage[key] || 0);
-      }
-      previousUsage = event.usage || {};
-      addUsage(usage, delta);
-      onEvent({ type: "usage", usage });
-    }, signal);
-    const parsed = {
-      placements: Array.isArray(result.placements) ? result.placements : [],
-      rejected_links: Array.isArray(result.rejected_links) ? result.rejected_links : [],
-      notes: result.notes || ""
-    };
-    feedback.push(parsed);
-    placements = placementMapFromFeedback(feedback);
+    const batches = fragmentBatches(fragments);
+    let rejectedThisIteration = 0;
+    for (let batchIndex = 0; batchIndex < batches.length; batchIndex += 1) {
+      onEvent({ type: "progress", stage: "fragment_batch", iteration, batch_index: batchIndex + 1, batch_count: batches.length, fragment_count: batches[batchIndex].length });
+      let previousUsage = {};
+      const result = await callAnthropicPromptStream(buildFragmentValidationPrompt(payload, compactFragmentsForLLM(batches[batchIndex]), iteration, batchIndex + 1, compactFeedbackForPrompt(feedback)), event => {
+        if (event.type !== "usage") return onEvent(event);
+        const delta = {};
+        for (const [key, value] of Object.entries(event.usage || {})) {
+          if (typeof value === "number") delta[key] = value - (previousUsage[key] || 0);
+        }
+        previousUsage = event.usage || {};
+        addUsage(usage, delta);
+        onEvent({ type: "usage", usage });
+      }, signal, FRAGMENT_VALIDATION_MAX_TOKENS);
+      const parsed = normalizeFragmentValidationResult(result);
+      rejectedThisIteration += parsed.rejected_links.length;
+      feedback.push(parsed);
+      placements = placementMapFromFeedback(feedback);
+    }
     const assigned = placements.size;
-    onEvent({ type: "progress", stage: "fragments_validated", iteration, assigned_residue_terms: assigned, rejected_links: parsed.rejected_links.length });
+    onEvent({ type: "progress", stage: "fragments_validated", iteration, assigned_residue_terms: assigned, rejected_links: rejectedThisIteration });
     if (assigned <= bestAssigned) stalled += 1;
     else stalled = 0;
     bestAssigned = Math.max(bestAssigned, assigned);

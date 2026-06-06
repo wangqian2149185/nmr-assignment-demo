@@ -1034,6 +1034,8 @@
               setStatus(`Residue map built with <strong>${formatNumber(event.residue_count)}</strong> anchors; <strong>${formatNumber(event.ambiguous_count)}</strong> peaks queued for local/refine handling. Tokens: <strong>${formatNumber(totalTokens(state.tokenUsage))}</strong>.`, "warn");
             } else if (event.stage === "fragments_built") {
               setStatus(`Built <strong>${formatNumber(event.fragment_count)}</strong> connected fragments from <strong>${formatNumber(event.residue_terms)}</strong> pseudo residues. Iteration <strong>${event.iteration}</strong>.`, "warn");
+            } else if (event.stage === "fragment_batch") {
+              setStatus(`Validating fragment batch <strong>${event.batch_index}</strong> of <strong>${event.batch_count}</strong> with LLM. Fragments in batch: <strong>${event.fragment_count}</strong>.`, "warn");
             } else if (event.stage === "fragments_validated") {
               setStatus(`LLM validated fragments. Assigned pseudo residues: <strong>${formatNumber(event.assigned_residue_terms)}</strong>; rejected links: <strong>${formatNumber(event.rejected_links)}</strong>. Iteration <strong>${event.iteration}</strong>.`, "warn");
             } else {

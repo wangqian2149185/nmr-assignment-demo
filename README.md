@@ -125,6 +125,14 @@ The backend uses the stage files this way:
 
 This keeps input tokens smaller and avoids asking the LLM to perform large-scale ppm matching.
 
+Fragment validation is batched so the model does not hit output-token limits. Useful `.env` controls:
+
+- `FRAGMENT_VALIDATION_BATCH_SIZE=4`
+- `FRAGMENT_VALIDATION_MAX_BATCHES=8`
+- `FRAGMENT_VALIDATION_MAX_TOKENS=4000`
+
+If the model still hits `max_tokens`, lower `FRAGMENT_VALIDATION_BATCH_SIZE` to `2` before raising token limits.
+
 ## Default Tolerances
 
 The app and `skill.md` use two-stage tolerances:
