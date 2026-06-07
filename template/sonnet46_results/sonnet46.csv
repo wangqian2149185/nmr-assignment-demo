@@ -1,0 +1,378 @@
+experiment_key,peak_id,assigned_label,Assignment,w1,w2,DataHeight,w3,assigned_anchor_residue,assigned_source_residue,assigned_source_atoms,assigned_relation,confidence,notes
+HSQC,HSQC_1,,?-?-?,120.972,9.2,2282,,,,,,low,not in map
+HSQC,HSQC_2,A41N-HN,?-?-?,120.055,6.796,3327,,A41,A41,"N,HN",intra,high,fragment R002
+HSQC,HSQC_3,,?-?-?,116.509,8.119,4659,,,,,,low,not in map
+HSQC,HSQC_4,S28N-HN,?-?-?,118.387,9.17,44850,,S28,S28,"N,HN",intra,high,fragment R004
+HSQC,HSQC_5,T26N-HN,?-?-?,126.835,10.174,61209,,T26,T26,"N,HN",intra,high,fragment R005
+HSQC,HSQC_6,L27N-HN,?-?-?,129.106,8.931,62448,,L27,L27,"N,HN",intra,high,fragment R006
+HSQC,HSQC_7,A84N-HN,?-?-?,120.295,8.238,69948,,A84,A84,"N,HN",intra,high,fragment R007
+HSQC,HSQC_8,F57N-HN,?-?-?,120.136,7.79,74202,,F57,F57,"N,HN",intra,medium,fragment R061
+HSQC,HSQC_9,K90N-HN,?-?-?,118.64,8.389,76656,,K90,K90,"N,HN",intra,medium,fragment R050
+HSQC,HSQC_10,,?-?-?,122.461,9.162,77644,,,,,,low,not in map
+HSQC,HSQC_11,,?-?-?,122.459,8.381,80723,,,,,,low,not in map
+HSQC,HSQC_12,L60N-HN,?-?-?,118.692,7.862,81899,,L60,L60,"N,HN",intra,medium,fragment R058
+HSQC,HSQC_13,,?-?-?,114.261,7.306,91462,,,,,,low,not in map
+HSQC,HSQC_14,H85N-HN,?-?-?,119.541,7.635,96918,,H85,H85,"N,HN",intra,medium,fragment R040
+HSQC,HSQC_15,,?-?-?,105.649,8.379,99796,,,,,,low,not in map
+HSQC,HSQC_16,,?-?-?,121.145,8.138,100996,,,,,,low,not in map
+HSQC,HSQC_17,,?-?-?,118.11,7.427,102962,,,,,,low,not in map
+HSQC,HSQC_18,I56N-HN,?-?-?,121.643,7.635,103280,,I56,I56,"N,HN",intra,medium,fragment R070
+HSQC,HSQC_19,H89N-HN,?-?-?,117.882,8.199,104630,,H89,H89,"N,HN",intra,medium,fragment R054
+HSQC,HSQC_20,I44N-HN,?-?-?,119.374,8.991,108808,,I44,I44,"N,HN",intra,low,fragment R020
+HSQC,HSQC_21,I44N-HN,?-?-?,119.226,8.855,108909,,I44,I44,"N,HN",intra,low,fragment R020
+HSQC,HSQC_22,E91N-HN,?-?-?,115.959,10.168,113635,,E91,E91,"N,HN",intra,high,fragment R022
+HSQC,HSQC_23,I56N-HN,?-?-?,120.925,7.573,115864,,I56,I56,"N,HN",intra,medium,fragment R070
+HSQC,HSQC_24,,?-?-?,107.898,7.849,116077,,,,,,low,not in map
+HSQC,HSQC_25,,?-?-?,111.881,8.421,119575,,,,,,low,not in map
+HSQC,HSQC_26,,?-?-?,119.562,7.139,120168,,,,,,low,not in map
+HSQC,HSQC_27,,?-?-?,112.131,7.69,120721,,,,,,low,not in map
+HSQC,HSQC_28,,?-?-?,113.633,7.319,124063,,,,,,low,not in map
+HSQC,HSQC_29,,?-?-?,113.666,7.319,124063,,,,,,low,not in map
+HSQC,HSQC_30,K29N-HN,?-?-?,115.983,7.75,124592,,K29,K29,"N,HN",intra,high,fragment R030
+HSQC,HSQC_31,,?-?-?,118.129,8.838,127229,,,,,,low,not in map
+HSQC,HSQC_32,A84N-HN,?-?-?,119.826,8.271,128788,,A84,A84,"N,HN",intra,medium,fragment R007
+HSQC,HSQC_33,T88N-HN,?-?-?,121.42,8.489,133318,,T88,T88,"N,HN",intra,high,fragment R033
+HSQC,HSQC_34,K45N-HN,?-?-?,119.671,8.735,133606,,K45,K45,"N,HN",intra,low,fragment R034
+HSQC,HSQC_35,T88N-HN,?-?-?,121.381,8.619,135619,,T88,T88,"N,HN",intra,medium,fragment R033
+HSQC,HSQC_36,H89N-HN,?-?-?,117.555,8.079,140568,,H89,H89,"N,HN",intra,high,fragment R054
+HSQC,HSQC_37,K45N-HN,?-?-?,120.076,8.758,142541,,K45,K45,"N,HN",intra,low,fragment R034
+HSQC,HSQC_38,,?-?-?,120.891,8.724,143129,,,,,,low,not in map
+HSQC,HSQC_39,I56N-HN,?-?-?,121.392,7.826,145786,,I56,I56,"N,HN",intra,medium,fragment R070
+HSQC,HSQC_40,H85N-HN,?-?-?,119.285,7.527,145950,,H85,H85,"N,HN",intra,high,fragment R040
+HSQC,HSQC_41,L40N-HN,?-?-?,126.4,8.302,145994,,L40,L40,"N,HN",intra,low,fragment R041
+HSQC,HSQC_42,,?-?-?,114.579,7.713,146398,,,,,,low,not in map
+HSQC,HSQC_43,,?-?-?,122.542,7.614,148700,,,,,,low,not in map
+HSQC,HSQC_44,H89N-HN,?-?-?,117.147,7.938,150243,,H89,H89,"N,HN",intra,medium,fragment R054
+HSQC,HSQC_45,K82N-HN,?-?-?,126.92,8.576,155848,,K82,K82,"N,HN",intra,high,fragment R045
+HSQC,HSQC_46,H85N-HN,?-?-?,120.046,7.43,165942,,H85,H85,"N,HN",intra,medium,fragment R040
+HSQC,HSQC_47,D61N-HN,?-?-?,117.222,7.568,168443,,D61,D61,"N,HN",intra,high,fragment R047
+HSQC,HSQC_48,N42N-HN,?-?-?,113.856,9.158,171006,,N42,N42,"N,HN",intra,high,fragment R048
+HSQC,HSQC_49,,?-?-?,121.032,7.397,172646,,,,,,low,not in map
+HSQC,HSQC_50,K90N-HN,?-?-?,118.789,8.502,176048,,K90,K90,"N,HN",intra,high,fragment R050
+HSQC,HSQC_51,K90N-HN,?-?-?,118.797,8.502,176770,,K90,K90,"N,HN",intra,high,fragment R050
+HSQC,HSQC_52,S28N-HN,?-?-?,118.405,9.093,178218,,S28,S28,"N,HN",intra,medium,fragment R004
+HSQC,HSQC_53,,?-?-?,122.273,7.255,180918,,,,,,low,not in map
+HSQC,HSQC_54,H89N-HN,?-?-?,117.32,8.097,183107,,H89,H89,"N,HN",intra,high,fragment R054
+HSQC,HSQC_55,F57N-HN,?-?-?,119.791,7.853,194359,,F57,F57,"N,HN",intra,medium,fragment R061
+HSQC,HSQC_56,A41N-HN,?-?-?,115.696,8.688,201894,,A41,A41,"N,HN",intra,low,fragment R056
+HSQC,HSQC_57,,?-?-?,106.897,7.95,213962,,,,,,low,not in map
+HSQC,HSQC_58,L60N-HN,?-?-?,118.222,7.766,217863,,L60,L60,"N,HN",intra,high,fragment R058
+HSQC,HSQC_59,A84N-HN,?-?-?,120.612,8.058,223184,,A84,A84,"N,HN",intra,medium,fragment R007
+HSQC,HSQC_60,,?-?-?,119.443,7.923,224453,,,,,,low,not in map
+HSQC,HSQC_61,F57N-HN,?-?-?,119.569,7.67,226797,,F57,F57,"N,HN",intra,high,fragment R061
+HSQC,HSQC_62,Q58N-HN,?-?-?,119.134,8.155,240525,,Q58,Q58,"N,HN",intra,high,fragment R062
+HSQC,HSQC_63,T43N-HN,?-?-?,123.302,8.529,245606,,T43,T43,"N,HN",intra,low,fragment R063
+HSQC,HSQC_64,,?-?-?,111.801,7.815,258212,,,,,,low,not in map
+HSQC,HSQC_65,K29N-HN,?-?-?,115.416,7.645,277211,,K29,K29,"N,HN",intra,medium,fragment R030
+HSQC,HSQC_66,N42N-HN,?-?-?,113.243,7.067,287815,,N42,N42,"N,HN",intra,low,fragment R066
+HSQC,HSQC_67,H87N-HN,?-?-?,120.559,7.817,289348,,H87,H87,"N,HN",intra,high,fragment R067
+HSQC,HSQC_68,A84N-HN,?-?-?,121.039,8.379,294792,,A84,A84,"N,HN",intra,medium,fragment R007
+HSQC,HSQC_69,E55N-HN,?-?-?,115.608,7.806,314664,,E55,E55,"N,HN",intra,high,fragment R069
+HSQC,HSQC_70,I56N-HN,?-?-?,121.329,7.658,324908,,I56,I56,"N,HN",intra,high,fragment R070
+HSQC,HSQC_71,G59N-HN,?-?-?,104.905,7.889,335856,,G59,G59,"N,HN",intra,high,fragment R071
+HSQC,HSQC_72,,?-?-?,123.217,8.076,337078,,,,,,low,not in map
+HSQC,HSQC_73,A62N-HN,?-?-?,130.85,8.113,349361,,A62,A62,"N,HN",intra,low,fragment R073
+HSQC,HSQC_74,,?-?-?,115.55,8.272,369031,,,,,,low,not in map
+HSQC,HSQC_75,Y86N-HN,?-?-?,121.858,7.822,506183,,Y86,Y86,"N,HN",intra,high,fragment R075
+HSQC,HSQC_76,E55N-HN,?-?-?,114.954,7.983,531155,,E55,E55,"N,HN",intra,medium,fragment R069
+HSQC,HSQC_77,A83N-HN,?-?-?,119.78,8.506,710603,,A83,A83,"N,HN",intra,high,fragment R077
+HSQC,HSQC_78,,?-?-?,127.057,7.893,3457471,,,,,,low,not in map
+HNCACB,HNCACB_1,,?-?-?,121.005,39.661,-81795,8.725,,,,,low,not in map
+HNCACB,HNCACB_2,,?-?-?,116.509,52.34,4659,8.119,,,,,low,not in map
+HNCACB,HNCACB_3,,?-?-?,165.062,52.34,0,7.312,,,,,low,not in map
+HNCACB,HNCACB_4,K90N-Cx-HN,?-?-?,118.797,52.954,176770,8.502,K90,K90,"N,Cx,HN",intra,medium,fragment R050
+HNCACB,HNCACB_5,E91N-Cx-HN,?-?-?,115.936,27.133,-166644,10.177,E91,E91,"N,Cx,HN",intra,medium,fragment R022
+HNCACB,HNCACB_6,,?-?-?,120.972,58.521,2282,9.2,,,,,low,not in map
+HNCACB,HNCACB_7,,?-?-?,120.972,31.69,-6815,9.2,,,,,low,not in map
+HNCACB,HNCACB_8,F57N-Cx-HN,?-?-?,119.791,59.738,194359,7.853,F57,F57,"N,Cx,HN",intra,medium,fragment R061
+HNCACB,HNCACB_9,F57N-Cx-HN,?-?-?,119.801,30.296,-125890,7.855,F57,F57,"N,Cx,HN",intra,medium,fragment R061
+HNCACB,HNCACB_10,H89N-CB-HN,?-?-?,117.882,58.427,104630,8.199,H89,H89,"N,CB,HN",intra,medium,fragment R054
+HNCACB,HNCACB_11,H89N-CB-HN,?-?-?,117.89,40.757,-67618,8.197,H89,H89,"N,CB,HN",intra,medium,fragment R054
+HNCACB,HNCACB_12,K90N-Cx-HN,?-?-?,118.64,59.55,76656,8.389,K90,K90,"N,Cx,HN",intra,medium,fragment R050
+HNCACB,HNCACB_13,K90N-Cx-HN,?-?-?,118.564,29.567,-61048,8.368,K90,K90,"N,Cx,HN",intra,medium,fragment R050
+HNCACB,HNCACB_14,,?-?-?,106.897,47.087,213962,7.95,,,,,low,not in map
+HNCACB,HNCACB_15,I56N-CA-HN,?-?-?,121.643,66.656,103280,7.635,I56,E55,"N,CA,HN",sequential_i_minus_1,medium,fragment R070
+HNCACB,HNCACB_16,I56N-CA-HN,?-?-?,121.645,37.708,-49694,7.628,I56,E55,"N,CA,HN",sequential_i_minus_1,medium,fragment R070
+HNCACB,HNCACB_17,F57N-Cx-HN,?-?-?,120.136,67.51,74202,7.79,F57,F57,"N,Cx,HN",intra,medium,fragment R061
+HNCACB,HNCACB_18,F57N-Cx-HN,?-?-?,119.952,31.57,-26101,7.781,F57,F57,"N,Cx,HN",intra,medium,fragment R061
+HNCACB,HNCACB_19,,?-?-?,118.129,56.447,127229,8.838,,,,,low,not in map
+HNCACB,HNCACB_20,,?-?-?,118.174,38.507,-93042,8.818,,,,,low,not in map
+HNCACB,HNCACB_21,,?-?-?,122.459,65.225,80723,8.381,,,,,low,not in map
+HNCACB,HNCACB_22,,?-?-?,122.403,37.92,-64449,8.385,,,,,low,not in map
+HNCACB,HNCACB_23,A84N-CB-HN,?-?-?,120.295,63.018,69948,8.238,A84,A84,"N,CB,HN",intra,medium,fragment R007
+HNCACB,HNCACB_24,A84N-CB-HN,?-?-?,120.512,40.813,-30628,8.217,A84,A84,"N,CB,HN",intra,medium,fragment R007
+HNCACB,HNCACB_25,A84N-CB-HN,?-?-?,119.826,58.554,128788,8.271,A84,A84,"N,CB,HN",intra,medium,fragment R007
+HNCACB,HNCACB_26,A84N-CB-HN,?-?-?,119.826,28.788,-73042,8.271,A84,A84,"N,CB,HN",intra,medium,fragment R007
+HNCACB,HNCACB_27,,?-?-?,114.261,60.777,91462,7.306,,,,,low,not in map
+HNCACB,HNCACB_28,,?-?-?,122.461,61.617,77644,9.162,,,,,low,not in map
+HNCACB,HNCACB_29,,?-?-?,122.361,28.711,-19659,9.168,,,,,low,not in map
+HNCACB,HNCACB_30,,?-?-?,105.649,47.272,99796,8.379,,,,,low,not in map
+HNCACB,HNCACB_31,,?-?-?,122.542,59.423,148700,7.614,,,,,low,not in map
+HNCACB,HNCACB_32,,?-?-?,122.525,31.34,-85614,7.609,,,,,low,not in map
+HNCACB,HNCACB_33,I44N-Cx-HN,?-?-?,119.226,57.939,108909,8.855,I44,I44,"N,Cx,HN",intra,low,fragment R020
+HNCACB,HNCACB_34,I44N-Cx-HN,?-?-?,119.252,40.835,-69626,8.863,I44,I44,"N,Cx,HN",intra,low,fragment R020
+HNCACB,HNCACB_35,K45N-Cx-HN,?-?-?,119.671,61.073,133606,8.735,K45,K45,"N,Cx,HN",intra,low,fragment R034
+HNCACB,HNCACB_36,K45N-Cx-HN,?-?-?,119.711,32.348,-58629,8.753,K45,K45,"N,Cx,HN",intra,low,fragment R034
+HNCACB,HNCACB_37,H85N-CB-HN,?-?-?,119.569,59.585,226797,7.67,H85,A84,"N,CB,HN",sequential_i_minus_1,medium,fragment R040
+HNCACB,HNCACB_38,H85N-CB-HN,?-?-?,119.632,28.595,-153172,7.672,H85,A84,"N,CB,HN",sequential_i_minus_1,medium,fragment R040
+HNCACB,HNCACB_39,I56N-CA-HN,?-?-?,121.392,59.63,145786,7.826,I56,E55,"N,CA,HN",sequential_i_minus_1,medium,fragment R070
+HNCACB,HNCACB_40,I56N-CA-HN,?-?-?,121.85,41.936,-423803,7.822,I56,E55,"N,CA,HN",sequential_i_minus_1,medium,fragment R070
+HNCACB,HNCACB_41,S28N-CB-HN,?-?-?,118.405,58.879,178218,9.093,S28,L27,"N,CB,HN",sequential_i_minus_1,medium,fragment R004
+HNCACB,HNCACB_42,S28N-CB-HN,?-?-?,118.397,42.553,-131081,9.094,S28,L27,"N,CB,HN",sequential_i_minus_1,medium,fragment R004
+HNCACB,HNCACB_43,,?-?-?,107.898,65.624,116077,7.849,,,,,low,not in map
+HNCACB,HNCACB_44,,?-?-?,107.928,69.34,-13148,7.85,,,,,low,not in map
+HNCACB,HNCACB_45,H89N-CB-HN,?-?-?,117.555,57.562,140568,8.079,H89,H89,"N,CB,HN",intra,medium,fragment R054
+HNCACB,HNCACB_46,H89N-CB-HN,?-?-?,117.534,33.608,-84619,8.076,H89,H89,"N,CB,HN",intra,medium,fragment R054
+HNCACB,HNCACB_47,,?-?-?,111.881,56.522,119575,8.421,,,,,low,not in map
+HNCACB,HNCACB_48,,?-?-?,111.934,31.157,-71339,8.421,,,,,low,not in map
+HNCACB,HNCACB_49,H85N-CB-HN,?-?-?,119.541,53.834,96918,7.635,H85,A84,"N,CB,HN",sequential_i_minus_1,medium,fragment R040
+HNCACB,HNCACB_50,H85N-CB-HN,?-?-?,119.51,42.637,-29328,7.588,H85,A84,"N,CB,HN",sequential_i_minus_1,medium,fragment R040
+HNCACB,HNCACB_51,A41N-Cx-HN,?-?-?,120.055,55.064,3327,6.796,A41,A41,"N,Cx,HN",intra,medium,fragment R002
+HNCACB,HNCACB_52,A41N-Cx-HN,?-?-?,120.055,19.532,-12310,6.796,A41,A41,"N,Cx,HN",intra,medium,fragment R002
+HNCACB,HNCACB_53,N42N-CA-HN,?-?-?,113.856,53.267,171006,9.158,N42,N42,"N,CA,HN",intra,high,fragment R048
+HNCACB,HNCACB_54,N42N-CB-HN,?-?-?,113.895,39.394,-144358,9.16,N42,N42,"N,CB,HN",intra,high,fragment R048
+HNCACB,HNCACB_55,K29N-Cx-HN,?-?-?,115.983,65.583,124592,7.75,K29,K29,"N,Cx,HN",intra,medium,fragment R030
+HNCACB,HNCACB_56,K29N-Cx-HN,?-?-?,116.06,70.51,-69623,7.743,K29,K29,"N,Cx,HN",intra,medium,fragment R030
+HNCACB,HNCACB_57,,?-?-?,121.032,59.435,172646,7.397,,,,,low,not in map
+HNCACB,HNCACB_58,,?-?-?,121.045,37.954,-94688,7.399,,,,,low,not in map
+HNCACB,HNCACB_59,L40N-Cx-HN,?-?-?,126.4,57.363,145994,8.302,L40,L40,"N,Cx,HN",intra,low,fragment R041
+HNCACB,HNCACB_60,L40N-Cx-HN,?-?-?,126.309,33.04,-99561,8.315,L40,L40,"N,Cx,HN",intra,low,fragment R041
+HNCACB,HNCACB_61,A41N-Cx-HN,?-?-?,115.696,54.375,201894,8.688,A41,A41,"N,Cx,HN",intra,low,fragment R056
+HNCACB,HNCACB_62,A41N-Cx-HN,?-?-?,115.693,37.258,-296757,8.691,A41,A41,"N,Cx,HN",intra,low,fragment R056
+HNCACB,HNCACB_63,N42N-CB-HN,?-?-?,113.243,61.3,287815,7.067,N42,N42,"N,CB,HN",intra,low,fragment R066
+HNCACB,HNCACB_64,N42N-CB-HN,?-?-?,113.304,38.502,-242021,7.064,N42,N42,"N,CB,HN",intra,low,fragment R066
+HNCACB,HNCACB_65,K29N-Cx-HN,?-?-?,115.416,56.969,277211,7.645,K29,K29,"N,Cx,HN",intra,medium,fragment R030
+HNCACB,HNCACB_66,K29N-Cx-HN,?-?-?,115.406,32.347,-192578,7.648,K29,K29,"N,Cx,HN",intra,medium,fragment R030
+HNCACB,HNCACB_67,I56N-CA-HN,?-?-?,121.858,54.12,506183,7.822,I56,E55,"N,CA,HN",sequential_i_minus_1,medium,fragment R070
+HNCACB,HNCACB_68,I56N-CA-HN,?-?-?,121.851,41.804,-372514,7.822,I56,E55,"N,CA,HN",sequential_i_minus_1,medium,fragment R070
+HNCACB,HNCACB_69,K82N-CB-HN,?-?-?,126.92,59.717,155848,8.576,K82,L81,"N,CB,HN",sequential_i_minus_1,medium,fragment R045
+HNCACB,HNCACB_70,K82N-CB-HN,?-?-?,126.933,32.837,-82462,8.577,K82,K82,"N,CB,HN",intra,high,fragment R045
+HNCACB,HNCACB_71,A83N-CB-HN,?-?-?,119.78,54.893,710603,8.506,A83,K82,"N,CB,HN",sequential_i_minus_1,medium,fragment R077
+HNCACB,HNCACB_72,A83N-CB-HN,?-?-?,119.792,18.801,-386284,8.505,A83,A83,"N,CB,HN",intra,high,fragment R077
+HNCACB,HNCACB_73,H85N-CB-HN,?-?-?,120.046,65.918,165942,7.43,H85,A84,"N,CB,HN",sequential_i_minus_1,medium,fragment R040
+HNCACB,HNCACB_74,H85N-CB-HN,?-?-?,119.996,31.906,-106922,7.429,H85,A84,"N,CB,HN",sequential_i_minus_1,medium,fragment R040
+HNCACB,HNCACB_75,H85N-CB-HN,?-?-?,119.285,64.22,145950,7.527,H85,A84,"N,CB,HN",sequential_i_minus_1,medium,fragment R040
+HNCACB,HNCACB_76,H85N-CB-HN,?-?-?,119.307,36.811,-94074,7.537,H85,A84,"N,CB,HN",sequential_i_minus_1,medium,fragment R040
+HNCACB,HNCACB_77,Q58N-CA-HN,?-?-?,119.134,58.183,240525,8.155,Q58,F57,"N,CA,HN",sequential_i_minus_1,medium,fragment R062
+HNCACB,HNCACB_78,Q58N-CB-HN,?-?-?,119.136,40.391,-223842,8.147,Q58,Q58,"N,CB,HN",intra,medium,fragment R062
+HNCACB,HNCACB_79,H87N-CA-HN,?-?-?,120.559,59.605,289348,7.817,H87,Y86,"N,CA,HN",sequential_i_minus_1,medium,fragment R067
+HNCACB,HNCACB_80,H87N-CB-HN,?-?-?,120.599,29.885,-187655,7.818,H87,H87,"N,CB,HN",intra,high,fragment R067
+HNCACB,HNCACB_81,T88N-CA-HN,?-?-?,121.42,65.29,133318,8.489,T88,H87,"N,CA,HN",sequential_i_minus_1,medium,fragment R033
+HNCACB,HNCACB_82,T88N-CB-HN,?-?-?,121.393,38.105,-77105,8.488,T88,H87,"N,CB,HN",sequential_i_minus_1,medium,fragment R033
+HNCACB,HNCACB_83,K45N-Cx-HN,?-?-?,120.076,63.435,142541,8.758,K45,K45,"N,Cx,HN",intra,low,fragment R034
+HNCACB,HNCACB_84,K45N-Cx-HN,?-?-?,120.052,39.827,-107263,8.763,K45,K45,"N,Cx,HN",intra,low,fragment R034
+HNCACB,HNCACB_85,,?-?-?,115.55,58.746,369031,8.272,,,,,low,not in map
+HNCACB,HNCACB_86,,?-?-?,115.573,28.788,-211572,8.271,,,,,low,not in map
+HNCACB,HNCACB_87,G59N-Cx-HN,?-?-?,104.905,46.437,335856,7.889,G59,G59,"N,Cx,HN",intra,medium,fragment R071
+HNCACB,HNCACB_88,L60N-CA-HN,?-?-?,118.222,55.476,217863,7.766,L60,L60,"N,CA,HN",intra,high,fragment R058
+HNCACB,HNCACB_89,L60N-CA-HN,?-?-?,118.279,44.154,-112780,7.766,L60,L60,"N,CA,HN",intra,medium,fragment R058
+HNCACB,HNCACB_90,D61N-CA-HN,?-?-?,117.222,53.195,168443,7.568,D61,L60,"N,CA,HN",sequential_i_minus_1,medium,fragment R047
+HNCACB,HNCACB_91,D61N-CA-HN,?-?-?,117.155,38.467,-195868,7.558,D61,L60,"N,CA,HN",sequential_i_minus_1,medium,fragment R047
+HNCACB,HNCACB_92,A62N-CB-HN,?-?-?,130.85,54.65,349361,8.113,A62,A62,"N,CB,HN",intra,low,fragment R073
+HNCACB,HNCACB_93,A62N-CB-HN,?-?-?,130.83,19.439,-179925,8.115,A62,A62,"N,CB,HN",intra,low,fragment R073
+HNCACB,HNCACB_94,,?-?-?,111.801,51.669,258212,7.815,,,,,low,not in map
+HNCACB,HNCACB_95,,?-?-?,111.836,37.081,-243379,7.816,,,,,low,not in map
+HNCACB,HNCACB_96,,?-?-?,114.579,57.523,146398,7.713,,,,,low,not in map
+HNCACB,HNCACB_97,,?-?-?,114.603,26.754,-181278,7.712,,,,,low,not in map
+HNCACB,HNCACB_98,K90N-Cx-HN,?-?-?,118.789,52.954,176048,8.502,K90,K90,"N,Cx,HN",intra,medium,fragment R050
+HNCACB,HNCACB_99,K90N-Cx-HN,?-?-?,118.794,40.9,-253750,8.503,K90,K90,"N,Cx,HN",intra,medium,fragment R050
+HNCACB,HNCACB_100,E91N-Cx-HN,?-?-?,115.959,58.242,113635,10.168,E91,E91,"N,Cx,HN",intra,medium,fragment R022
+HNCACB,HNCACB_101,E91N-Cx-HN,?-?-?,115.936,27.133,-166644,10.177,E91,E91,"N,Cx,HN",intra,medium,fragment R022
+HNCACB,HNCACB_102,E55N-Cx-HN,?-?-?,114.954,53.952,531155,7.983,E55,E55,"N,Cx,HN",intra,medium,fragment R069
+HNCACB,HNCACB_103,E55N-Cx-HN,?-?-?,114.913,32.248,-191583,7.985,E55,E55,"N,Cx,HN",intra,medium,fragment R069
+HNCACB,HNCACB_104,T26N-Cx-HN,?-?-?,126.835,61.303,61209,10.174,T26,T26,"N,Cx,HN",intra,medium,fragment R005
+HNCACB,HNCACB_105,T26N-Cx-HN,?-?-?,126.872,33.276,-48578,10.169,T26,T26,"N,Cx,HN",intra,medium,fragment R005
+HNCACB,HNCACB_106,L27N-CB-HN,?-?-?,129.106,52.672,62448,8.931,L27,L27,"N,CB,HN",intra,medium,fragment R006
+HNCACB,HNCACB_107,L27N-CB-HN,?-?-?,129.079,41.627,-58051,8.919,L27,L27,"N,CB,HN",intra,high,fragment R006
+HNCACB,HNCACB_108,S28N-CB-HN,?-?-?,118.387,63.201,44850,9.17,S28,L27,"N,CB,HN",sequential_i_minus_1,medium,fragment R004
+HNCACB,HNCACB_109,S28N-CB-HN,?-?-?,118.392,38.714,-5119,9.164,S28,L27,"N,CB,HN",sequential_i_minus_1,medium,fragment R004
+HNCACB,HNCACB_110,K29N-Cx-HN,?-?-?,115.608,59.479,314664,7.806,K29,K29,"N,Cx,HN",intra,medium,fragment R030
+HNCACB,HNCACB_111,K29N-Cx-HN,?-?-?,115.637,27.966,-204144,7.805,K29,K29,"N,Cx,HN",intra,medium,fragment R030
+HNCACB,HNCACB_112,T88N-CA-HN,?-?-?,121.381,58.86,135619,8.619,T88,H87,"N,CA,HN",sequential_i_minus_1,medium,fragment R033
+HNCACB,HNCACB_113,T88N-CB-HN,?-?-?,121.363,30.292,-85932,8.623,T88,H87,"N,CB,HN",sequential_i_minus_1,medium,fragment R033
+HNCACB,HNCACB_114,,?-?-?,120.891,60.5,143129,8.724,,,,,low,not in map
+HNCACB,HNCACB_115,,?-?-?,121.005,39.661,-81795,8.725,,,,,low,not in map
+HNCACB,HNCACB_116,I56N-CA-HN,?-?-?,120.925,66.01,115864,7.573,I56,E55,"N,CA,HN",sequential_i_minus_1,medium,fragment R070
+HNCACB,HNCACB_117,I56N-CA-HN,?-?-?,121.033,36.772,-46352,7.564,I56,E55,"N,CA,HN",sequential_i_minus_1,medium,fragment R070
+HNCACB,HNCACB_118,,?-?-?,113.633,62.539,124063,7.319,,,,,low,not in map
+HNCACB,HNCACB_119,,?-?-?,113.666,62.539,124063,7.319,,,,,low,not in map
+HNCACB,HNCACB_120,,?-?-?,122.273,56.687,180918,7.255,,,,,low,not in map
+HNCACB,HNCACB_121,,?-?-?,122.299,40.544,-100813,7.257,,,,,low,not in map
+HNCACB,HNCACB_122,,?-?-?,119.562,67.107,120168,7.139,,,,,low,not in map
+HNCACB,HNCACB_123,,?-?-?,119.55,30.65,-56662,7.143,,,,,low,not in map
+HNCACB,HNCACB_124,A84N-CB-HN,?-?-?,120.612,56.283,223184,8.058,A84,A84,"N,CB,HN",intra,medium,fragment R007
+HNCACB,HNCACB_125,A84N-CB-HN,?-?-?,120.608,18.602,-133261,8.055,A84,A84,"N,CB,HN",intra,medium,fragment R007
+HNCACB,HNCACB_126,,?-?-?,118.11,65.41,102962,7.427,,,,,low,not in map
+HNCACB,HNCACB_127,,?-?-?,118.099,39.109,-66801,7.435,,,,,low,not in map
+HNCACB,HNCACB_128,T43N-CB-HN,?-?-?,123.302,54.984,245606,8.529,T43,N42,"N,CB,HN",sequential_i_minus_1,low,fragment R063
+HNCACB,HNCACB_129,T43N-CB-HN,?-?-?,123.254,19.369,-162063,8.524,T43,N42,"N,CB,HN",sequential_i_minus_1,low,fragment R063
+HNCACB,HNCACB_130,I44N-Cx-HN,?-?-?,119.374,57.863,108808,8.991,I44,I44,"N,Cx,HN",intra,low,fragment R020
+HNCACB,HNCACB_131,I44N-Cx-HN,?-?-?,119.365,42.677,-66087,8.985,I44,I44,"N,Cx,HN",intra,low,fragment R020
+HNCACB,HNCACB_132,L60N-CA-HN,?-?-?,118.692,60.552,81899,7.862,L60,L60,"N,CA,HN",intra,medium,fragment R058
+HNCACB,HNCACB_133,L60N-CA-HN,?-?-?,118.708,32.541,-50587,7.853,L60,L60,"N,CA,HN",intra,medium,fragment R058
+HNCACB,HNCACB_134,H87N-CA-HN,?-?-?,121.329,54.835,324908,7.658,H87,H87,"N,CA,HN",intra,medium,fragment R067
+HNCACB,HNCACB_135,H87N-CB-HN,?-?-?,121.338,18.555,-178334,7.674,H87,H87,"N,CB,HN",intra,medium,fragment R067
+HNCACB,HNCACB_136,A84N-CB-HN,?-?-?,121.039,54.636,294792,8.379,A84,A84,"N,CB,HN",intra,medium,fragment R007
+HNCACB,HNCACB_137,A84N-CB-HN,?-?-?,121.072,18.518,-205377,8.374,A84,A84,"N,CB,HN",intra,medium,fragment R007
+HNCACB,HNCACB_138,H89N-CB-HN,?-?-?,117.32,58.793,183107,8.097,H89,H89,"N,CB,HN",intra,medium,fragment R054
+HNCACB,HNCACB_139,H89N-CB-HN,?-?-?,117.316,30.58,-123045,8.092,H89,H89,"N,CB,HN",intra,medium,fragment R054
+HNCACB,HNCACB_140,,?-?-?,119.443,59.763,224453,7.923,,,,,low,not in map
+HNCACB,HNCACB_141,,?-?-?,119.375,38.463,-145155,7.918,,,,,low,not in map
+HNCACB,HNCACB_142,H89N-CB-HN,?-?-?,117.147,56.846,150243,7.938,H89,H89,"N,CB,HN",intra,medium,fragment R054
+HNCACB,HNCACB_143,H89N-CB-HN,?-?-?,117.11,29.864,-129679,7.943,H89,H89,"N,CB,HN",intra,medium,fragment R054
+HNCACB,HNCACB_144,,?-?-?,112.131,62.594,120721,7.69,,,,,low,not in map
+HNCACB,HNCACB_145,,?-?-?,112.081,69.925,-98497,7.701,,,,,low,not in map
+HNCACB,HNCACB_146,,?-?-?,121.145,56.09,100996,8.138,,,,,low,not in map
+HNCACB,HNCACB_147,,?-?-?,121.176,29.906,-78846,8.124,,,,,low,not in map
+HNCACB,HNCACB_148,,?-?-?,123.217,56.298,337078,8.076,,,,,low,not in map
+HNCACB,HNCACB_149,,?-?-?,123.238,33.296,-186161,8.071,,,,,low,not in map
+HNCACB,HNCACB_150,,?-?-?,127.057,58.171,3457471,7.893,,,,,low,not in map
+HNCACB,HNCACB_151,,?-?-?,127.058,31.362,-2186199,7.893,,,,,low,not in map
+CBCACONH,CBCACONH_1,N42N-Cx-HN,?-?-?,113.895,55.087,260235,9.154,N42,A41,"N,Cx,HN",sequential_i_minus_1,medium,fragment R048
+CBCACONH,CBCACONH_2,F57N-Cx-HN,?-?-?,119.732,59.7,53108,7.822,F57,I56,"N,Cx,HN",sequential_i_minus_1,medium,fragment R061
+CBCACONH,CBCACONH_3,E91N-Cx-HN,?-?-?,115.92,40.792,99661,10.168,E91,K90,"N,Cx,HN",sequential_i_minus_1,medium,fragment R022
+CBCACONH,CBCACONH_4,K90N-Cx-HN,?-?-?,118.789,57.014,305,8.532,K90,H89,"N,Cx,HN",sequential_i_minus_1,medium,fragment R050
+CBCACONH,CBCACONH_5,,?-?-?,122.274,60.326,33989,7.231,,,,,low,not in map
+CBCACONH,CBCACONH_6,,?-?-?,123.244,29.611,245573,8.08,,,,,low,not in map
+CBCACONH,CBCACONH_7,F57N-Cx-HN,?-?-?,119.806,59.723,217185,7.849,F57,I56,"N,Cx,HN",sequential_i_minus_1,medium,fragment R061
+CBCACONH,CBCACONH_8,F57N-Cx-HN,?-?-?,119.852,29.595,73479,7.851,F57,I56,"N,Cx,HN",sequential_i_minus_1,medium,fragment R061
+CBCACONH,CBCACONH_9,H89N-Cx-HN,?-?-?,117.897,59.559,98536,8.19,H89,T88,"N,Cx,HN",sequential_i_minus_1,medium,fragment R054
+CBCACONH,CBCACONH_10,H89N-Cx-HN,?-?-?,117.939,30.015,29532,8.193,H89,T88,"N,Cx,HN",sequential_i_minus_1,medium,fragment R054
+CBCACONH,CBCACONH_11,K90N-Cx-HN,?-?-?,118.555,58.297,104869,8.388,K90,H89,"N,Cx,HN",sequential_i_minus_1,medium,fragment R050
+CBCACONH,CBCACONH_12,K90N-Cx-HN,?-?-?,118.588,40.646,25221,8.372,K90,H89,"N,Cx,HN",sequential_i_minus_1,medium,fragment R050
+CBCACONH,CBCACONH_13,,?-?-?,106.875,59.472,144666,7.941,,,,,low,not in map
+CBCACONH,CBCACONH_14,,?-?-?,106.905,29.301,92333,7.947,,,,,low,not in map
+CBCACONH,CBCACONH_15,I56N-CA-HN,?-?-?,121.751,46.901,221350,7.616,I56,E55,"N,CA,HN",sequential_i_minus_1,medium,fragment R070
+CBCACONH,CBCACONH_16,F57N-Cx-HN,?-?-?,120.114,66.519,108467,7.791,F57,I56,"N,Cx,HN",sequential_i_minus_1,medium,fragment R061
+CBCACONH,CBCACONH_17,F57N-Cx-HN,?-?-?,119.825,37.816,29896,7.784,F57,I56,"N,Cx,HN",sequential_i_minus_1,medium,fragment R061
+CBCACONH,CBCACONH_18,,?-?-?,118.158,67.413,100608,8.83,,,,,low,not in map
+CBCACONH,CBCACONH_19,,?-?-?,118.214,31.381,17060,8.798,,,,,low,not in map
+CBCACONH,CBCACONH_20,,?-?-?,122.42,56.215,110381,8.376,,,,,low,not in map
+CBCACONH,CBCACONH_21,T43N-CB-HN,?-?-?,122.535,38.04,87973,8.374,T43,N42,"N,CB,HN",sequential_i_minus_1,low,fragment R063
+CBCACONH,CBCACONH_22,A84N-Cx-HN,?-?-?,120.292,65.189,84441,8.241,A84,A83,"N,Cx,HN",sequential_i_minus_1,medium,fragment R007
+CBCACONH,CBCACONH_23,A84N-Cx-HN,?-?-?,120.238,37.566,-14597,8.218,A84,A83,"N,Cx,HN",sequential_i_minus_1,medium,fragment R007
+CBCACONH,CBCACONH_24,A84N-Cx-HN,?-?-?,119.827,57.836,148811,8.272,A84,A83,"N,Cx,HN",sequential_i_minus_1,medium,fragment R007
+CBCACONH,CBCACONH_25,A84N-Cx-HN,?-?-?,119.792,29.078,85003,8.276,A84,A83,"N,Cx,HN",sequential_i_minus_1,medium,fragment R007
+CBCACONH,CBCACONH_26,,?-?-?,114.298,58.528,128713,7.299,,,,,low,not in map
+CBCACONH,CBCACONH_27,,?-?-?,122.442,57.214,75801,9.176,,,,,low,not in map
+CBCACONH,CBCACONH_28,,?-?-?,105.681,61.384,106015,8.369,,,,,low,not in map
+CBCACONH,CBCACONH_29,,?-?-?,122.578,47.178,199159,7.611,,,,,low,not in map
+CBCACONH,CBCACONH_30,I44N-Cx-HN,?-?-?,119.249,59.296,148138,8.854,I44,T43,"N,Cx,HN",sequential_i_minus_1,low,fragment R020
+CBCACONH,CBCACONH_31,I44N-Cx-HN,?-?-?,119.257,31.06,50822,8.846,I44,T43,"N,Cx,HN",sequential_i_minus_1,low,fragment R020
+CBCACONH,CBCACONH_32,K45N-Cx-HN,?-?-?,119.672,57.741,130550,8.723,K45,I44,"N,Cx,HN",sequential_i_minus_1,low,fragment R034
+CBCACONH,CBCACONH_33,K45N-Cx-HN,?-?-?,119.695,40.635,38751,8.719,K45,I44,"N,Cx,HN",sequential_i_minus_1,low,fragment R034
+CBCACONH,CBCACONH_34,H85N-CB-HN,?-?-?,119.537,60.884,151269,7.669,H85,A84,"N,CB,HN",sequential_i_minus_1,medium,fragment R040
+CBCACONH,CBCACONH_35,H85N-CB-HN,?-?-?,119.494,32.107,46425,7.671,H85,A84,"N,CB,HN",sequential_i_minus_1,medium,fragment R040
+CBCACONH,CBCACONH_36,I56N-CA-HN,?-?-?,121.394,59.435,170715,7.822,I56,E55,"N,CA,HN",sequential_i_minus_1,medium,fragment R070
+CBCACONH,CBCACONH_37,I56N-CA-HN,?-?-?,121.449,28.239,58147,7.818,I56,E55,"N,CA,HN",sequential_i_minus_1,medium,fragment R070
+CBCACONH,CBCACONH_38,S28N-CB-HN,?-?-?,118.401,59.707,193573,9.095,S28,L27,"N,CB,HN",sequential_i_minus_1,medium,fragment R004
+CBCACONH,CBCACONH_39,S28N-CB-HN,?-?-?,118.412,42.131,90201,9.09,S28,L27,"N,CB,HN",sequential_i_minus_1,medium,fragment R004
+CBCACONH,CBCACONH_40,,?-?-?,107.928,58.871,164655,7.845,,,,,low,not in map
+CBCACONH,CBCACONH_41,,?-?-?,107.892,42.363,48118,7.835,,,,,low,not in map
+CBCACONH,CBCACONH_42,H89N-Cx-HN,?-?-?,117.545,65.586,92478,8.065,H89,T88,"N,Cx,HN",sequential_i_minus_1,medium,fragment R054
+CBCACONH,CBCACONH_43,H89N-Cx-HN,?-?-?,117.613,65.622,93607,8.076,H89,T88,"N,Cx,HN",sequential_i_minus_1,medium,fragment R054
+CBCACONH,CBCACONH_44,H89N-Cx-HN,?-?-?,117.503,69.186,23569,8.061,H89,T88,"N,Cx,HN",sequential_i_minus_1,medium,fragment R054
+CBCACONH,CBCACONH_45,,?-?-?,111.877,57.501,112154,8.416,,,,,low,not in map
+CBCACONH,CBCACONH_46,,?-?-?,111.826,33.363,88860,8.421,,,,,low,not in map
+CBCACONH,CBCACONH_47,H85N-CB-HN,?-?-?,119.51,56.441,57509,7.616,H85,A84,"N,CB,HN",sequential_i_minus_1,medium,fragment R040
+CBCACONH,CBCACONH_48,H85N-CB-HN,?-?-?,119.51,30.83,4638,7.588,H85,A84,"N,CB,HN",sequential_i_minus_1,medium,fragment R040
+CBCACONH,CBCACONH_49,A41N-Cx-HN,?-?-?,120.055,53.872,18414,6.796,A41,L40,"N,Cx,HN",sequential_i_minus_1,medium,fragment R002
+CBCACONH,CBCACONH_50,A41N-Cx-HN,?-?-?,120.055,42.637,-3767,6.796,A41,L40,"N,Cx,HN",sequential_i_minus_1,medium,fragment R002
+CBCACONH,CBCACONH_51,N42N-Cx-HN,?-?-?,113.895,55.087,260235,9.154,N42,A41,"N,Cx,HN",sequential_i_minus_1,medium,fragment R048
+CBCACONH,CBCACONH_52,N42N-Cx-HN,?-?-?,113.864,19.555,175208,9.158,N42,A41,"N,Cx,HN",sequential_i_minus_1,medium,fragment R048
+CBCACONH,CBCACONH_53,K29N-Cx-HN,?-?-?,116.021,53.262,244605,7.745,K29,S28,"N,Cx,HN",sequential_i_minus_1,medium,fragment R030
+CBCACONH,CBCACONH_54,K29N-Cx-HN,?-?-?,116.049,39.154,170917,7.739,K29,S28,"N,Cx,HN",sequential_i_minus_1,medium,fragment R030
+CBCACONH,CBCACONH_55,,?-?-?,121.044,65.47,117490,7.392,,,,,low,not in map
+CBCACONH,CBCACONH_56,,?-?-?,121.029,70.573,24149,7.383,,,,,low,not in map
+CBCACONH,CBCACONH_57,L40N-Cx-HN,?-?-?,126.366,59.323,127547,8.304,L40,E39,"N,Cx,HN",sequential_i_minus_1,low,fragment R041
+CBCACONH,CBCACONH_58,L40N-Cx-HN,?-?-?,126.407,37.597,59160,8.304,L40,E39,"N,Cx,HN",sequential_i_minus_1,low,fragment R041
+CBCACONH,CBCACONH_59,A41N-Cx-HN,?-?-?,115.669,57.5,180027,8.68,A41,L40,"N,Cx,HN",sequential_i_minus_1,low,fragment R056
+CBCACONH,CBCACONH_60,A41N-Cx-HN,?-?-?,115.693,32.954,118398,8.689,A41,L40,"N,Cx,HN",sequential_i_minus_1,low,fragment R056
+CBCACONH,CBCACONH_61,N42N-Cx-HN,?-?-?,113.26,54.302,330795,7.064,N42,A41,"N,Cx,HN",sequential_i_minus_1,low,fragment R066
+CBCACONH,CBCACONH_62,N42N-Cx-HN,?-?-?,113.272,37.031,513175,7.063,N42,A41,"N,Cx,HN",sequential_i_minus_1,low,fragment R066
+CBCACONH,CBCACONH_63,K29N-Cx-HN,?-?-?,115.417,61.275,192563,7.637,K29,S28,"N,Cx,HN",sequential_i_minus_1,medium,fragment R030
+CBCACONH,CBCACONH_64,K29N-Cx-HN,?-?-?,115.417,38.253,55081,7.635,K29,S28,"N,Cx,HN",sequential_i_minus_1,medium,fragment R030
+CBCACONH,CBCACONH_65,I56N-CA-HN,?-?-?,121.85,56.815,254774,7.818,I56,E55,"N,CA,HN",sequential_i_minus_1,medium,fragment R070
+CBCACONH,CBCACONH_66,I56N-CA-HN,?-?-?,121.87,31.934,139127,7.811,I56,E55,"N,CA,HN",sequential_i_minus_1,medium,fragment R070
+CBCACONH,CBCACONH_67,K82N-CB-HN,?-?-?,126.947,54.036,225095,8.573,K82,L81,"N,CB,HN",sequential_i_minus_1,medium,fragment R045
+CBCACONH,CBCACONH_68,K82N-CB-HN,?-?-?,126.928,41.711,176605,8.576,K82,L81,"N,CB,HN",sequential_i_minus_1,high,fragment R045
+CBCACONH,CBCACONH_69,A83N-CB-HN,?-?-?,119.806,59.592,279718,8.501,A83,K82,"N,CB,HN",sequential_i_minus_1,medium,fragment R077
+CBCACONH,CBCACONH_70,A83N-CB-HN,?-?-?,119.767,32.457,167178,8.503,A83,K82,"N,CB,HN",sequential_i_minus_1,high,fragment R077
+CBCACONH,CBCACONH_71,H85N-CB-HN,?-?-?,120.024,54.775,327499,7.424,H85,A84,"N,CB,HN",sequential_i_minus_1,medium,fragment R040
+CBCACONH,CBCACONH_72,H85N-CB-HN,?-?-?,120.046,18.573,223731,7.426,H85,A84,"N,CB,HN",sequential_i_minus_1,medium,fragment R040
+CBCACONH,CBCACONH_73,H85N-CB-HN,?-?-?,119.306,65.837,256990,7.528,H85,A84,"N,CB,HN",sequential_i_minus_1,medium,fragment R040
+CBCACONH,CBCACONH_74,H85N-CB-HN,?-?-?,119.323,31.776,74254,7.526,H85,A84,"N,CB,HN",sequential_i_minus_1,medium,fragment R040
+CBCACONH,CBCACONH_75,Q58N-CA-HN,?-?-?,119.136,64.172,252399,8.146,Q58,F57,"N,CA,HN",sequential_i_minus_1,medium,fragment R062
+CBCACONH,CBCACONH_76,Q58N-CA-HN,?-?-?,119.162,36.682,58232,8.147,Q58,F57,"N,CA,HN",sequential_i_minus_1,medium,fragment R062
+CBCACONH,CBCACONH_77,H87N-CA-HN,?-?-?,120.58,58.037,222384,7.814,H87,Y86,"N,CA,HN",sequential_i_minus_1,high,fragment R067
+CBCACONH,CBCACONH_78,H87N-CA-HN,?-?-?,120.584,40.13,140083,7.814,H87,Y86,"N,CA,HN",sequential_i_minus_1,medium,fragment R067
+CBCACONH,CBCACONH_79,T88N-CA-HN,?-?-?,121.412,59.612,221060,8.502,T88,H87,"N,CA,HN",sequential_i_minus_1,medium,fragment R033
+CBCACONH,CBCACONH_80,T88N-CB-HN,?-?-?,121.447,29.666,128946,8.484,T88,H87,"N,CB,HN",sequential_i_minus_1,high,fragment R033
+CBCACONH,CBCACONH_81,K45N-Cx-HN,?-?-?,120.087,65.154,149934,8.761,K45,I44,"N,Cx,HN",sequential_i_minus_1,low,fragment R034
+CBCACONH,CBCACONH_82,K45N-Cx-HN,?-?-?,120.024,37.785,48208,8.757,K45,I44,"N,Cx,HN",sequential_i_minus_1,low,fragment R034
+CBCACONH,CBCACONH_83,,?-?-?,115.534,63.222,369483,8.271,,,,,low,not in map
+CBCACONH,CBCACONH_84,,?-?-?,115.535,39.563,123155,8.271,,,,,low,not in map
+CBCACONH,CBCACONH_85,G59N-Cx-HN,?-?-?,104.907,58.564,194895,7.883,G59,Q58,"N,Cx,HN",sequential_i_minus_1,medium,fragment R071
+CBCACONH,CBCACONH_86,G59N-Cx-HN,?-?-?,104.938,28.598,95986,7.883,G59,Q58,"N,Cx,HN",sequential_i_minus_1,medium,fragment R071
+CBCACONH,CBCACONH_87,L60N-Cx-HN,?-?-?,118.254,46.256,376127,7.758,L60,G59,"N,Cx,HN",sequential_i_minus_1,medium,fragment R058
+CBCACONH,CBCACONH_88,D61N-CA-HN,?-?-?,117.182,55.413,254780,7.561,D61,L60,"N,CA,HN",sequential_i_minus_1,high,fragment R047
+CBCACONH,CBCACONH_89,D61N-CA-HN,?-?-?,117.223,44.112,114135,7.552,D61,L60,"N,CA,HN",sequential_i_minus_1,medium,fragment R047
+CBCACONH,CBCACONH_90,A62N-Cx-HN,?-?-?,130.824,53.078,201518,8.11,A62,D61,"N,Cx,HN",sequential_i_minus_1,low,fragment R073
+CBCACONH,CBCACONH_91,A62N-Cx-HN,?-?-?,130.844,38.291,213941,8.114,A62,D61,"N,Cx,HN",sequential_i_minus_1,low,fragment R073
+CBCACONH,CBCACONH_92,,?-?-?,111.816,54.585,434346,7.808,,,,,low,not in map
+CBCACONH,CBCACONH_93,,?-?-?,111.846,19.141,266930,7.807,,,,,low,not in map
+CBCACONH,CBCACONH_94,,?-?-?,114.543,51.563,202968,7.716,,,,,low,not in map
+CBCACONH,CBCACONH_95,,?-?-?,114.606,36.844,145870,7.714,,,,,low,not in map
+CBCACONH,CBCACONH_96,K90N-Cx-HN,?-?-?,118.789,57.453,216320,8.492,K90,H89,"N,Cx,HN",sequential_i_minus_1,medium,fragment R050
+CBCACONH,CBCACONH_97,K90N-Cx-HN,?-?-?,118.818,26.435,158273,8.495,K90,H89,"N,Cx,HN",sequential_i_minus_1,medium,fragment R050
+CBCACONH,CBCACONH_98,E91N-Cx-HN,?-?-?,116.019,52.884,150697,10.174,E91,K90,"N,Cx,HN",sequential_i_minus_1,medium,fragment R022
+CBCACONH,CBCACONH_99,E91N-Cx-HN,?-?-?,115.92,40.792,99661,10.168,E91,K90,"N,Cx,HN",sequential_i_minus_1,medium,fragment R022
+CBCACONH,CBCACONH_100,E55N-Cx-HN,?-?-?,114.94,58.145,213148,7.976,E55,D54,"N,Cx,HN",sequential_i_minus_1,medium,fragment R069
+CBCACONH,CBCACONH_101,E55N-Cx-HN,?-?-?,115.004,27.07,180119,7.981,E55,D54,"N,Cx,HN",sequential_i_minus_1,medium,fragment R069
+CBCACONH,CBCACONH_102,T26N-Cx-HN,?-?-?,126.869,53.767,126383,10.163,T26,D25,"N,Cx,HN",sequential_i_minus_1,medium,fragment R005
+CBCACONH,CBCACONH_103,T26N-Cx-HN,?-?-?,126.872,32.178,28303,10.162,T26,D25,"N,Cx,HN",sequential_i_minus_1,medium,fragment R005
+CBCACONH,CBCACONH_104,L27N-Cx-HN,?-?-?,129.055,61.232,57191,8.921,L27,T26,"N,Cx,HN",sequential_i_minus_1,medium,fragment R006
+CBCACONH,CBCACONH_105,L27N-Cx-HN,?-?-?,129.044,33.276,27027,8.923,L27,T26,"N,Cx,HN",sequential_i_minus_1,medium,fragment R006
+CBCACONH,CBCACONH_106,S28N-CB-HN,?-?-?,118.411,52.547,47745,9.166,S28,L27,"N,CB,HN",sequential_i_minus_1,medium,fragment R004
+CBCACONH,CBCACONH_107,S28N-CB-HN,?-?-?,118.471,41.443,42697,9.165,S28,L27,"N,CB,HN",sequential_i_minus_1,medium,fragment R004
+CBCACONH,CBCACONH_108,K29N-Cx-HN,?-?-?,115.64,63.038,267683,7.806,K29,S28,"N,Cx,HN",sequential_i_minus_1,medium,fragment R030
+CBCACONH,CBCACONH_109,K29N-Cx-HN,?-?-?,115.632,38.663,83944,7.804,K29,S28,"N,Cx,HN",sequential_i_minus_1,medium,fragment R030
+CBCACONH,CBCACONH_110,T88N-CA-HN,?-?-?,121.426,59.372,206457,8.614,T88,H87,"N,CA,HN",sequential_i_minus_1,medium,fragment R033
+CBCACONH,CBCACONH_111,T88N-CB-HN,?-?-?,121.384,27.646,122585,8.613,T88,H87,"N,CB,HN",sequential_i_minus_1,medium,fragment R033
+CBCACONH,CBCACONH_112,,?-?-?,120.897,58.774,211641,8.724,,,,,low,not in map
+CBCACONH,CBCACONH_113,,?-?-?,120.937,30.036,60774,8.729,,,,,low,not in map
+CBCACONH,CBCACONH_114,I56N-CA-HN,?-?-?,120.938,60.461,236583,7.574,I56,E55,"N,CA,HN",sequential_i_minus_1,medium,fragment R070
+CBCACONH,CBCACONH_115,I56N-CA-HN,?-?-?,120.886,39.306,71847,7.575,I56,E55,"N,CA,HN",sequential_i_minus_1,medium,fragment R070
+CBCACONH,CBCACONH_116,,?-?-?,113.666,65.927,259277,7.312,,,,,low,not in map
+CBCACONH,CBCACONH_117,,?-?-?,113.668,36.47,84572,7.313,,,,,low,not in map
+CBCACONH,CBCACONH_118,,?-?-?,122.325,62.511,107246,7.241,,,,,low,not in map
+CBCACONH,CBCACONH_119,,?-?-?,119.542,56.627,196742,7.138,,,,,low,not in map
+CBCACONH,CBCACONH_120,,?-?-?,119.447,40.279,69586,7.149,,,,,low,not in map
+CBCACONH,CBCACONH_121,A84N-Cx-HN,?-?-?,120.622,67.122,182676,8.063,A84,A83,"N,Cx,HN",sequential_i_minus_1,medium,fragment R007
+CBCACONH,CBCACONH_122,A84N-Cx-HN,?-?-?,120.624,29.611,-5451,8.08,A84,A83,"N,Cx,HN",sequential_i_minus_1,medium,fragment R007
+CBCACONH,CBCACONH_123,,?-?-?,118.147,56.157,236619,7.428,,,,,low,not in map
+CBCACONH,CBCACONH_124,,?-?-?,118.111,18.315,153214,7.423,,,,,low,not in map
+CBCACONH,CBCACONH_125,T43N-CB-HN,?-?-?,123.264,65.418,266034,8.518,T43,N42,"N,CB,HN",sequential_i_minus_1,low,fragment R063
+CBCACONH,CBCACONH_126,T43N-CB-HN,?-?-?,123.311,38.743,63168,8.526,T43,N42,"N,CB,HN",sequential_i_minus_1,low,fragment R063
+CBCACONH,CBCACONH_127,I44N-Cx-HN,?-?-?,119.374,54.836,193469,8.98,I44,T43,"N,Cx,HN",sequential_i_minus_1,low,fragment R020
+CBCACONH,CBCACONH_128,I44N-Cx-HN,?-?-?,119.356,19.147,125375,8.98,I44,T43,"N,Cx,HN",sequential_i_minus_1,low,fragment R020
+CBCACONH,CBCACONH_129,L60N-Cx-HN,?-?-?,118.768,57.801,130521,7.861,L60,G59,"N,Cx,HN",sequential_i_minus_1,medium,fragment R058
+CBCACONH,CBCACONH_130,L60N-Cx-HN,?-?-?,118.706,42.664,45840,7.863,L60,G59,"N,Cx,HN",sequential_i_minus_1,medium,fragment R058
+CBCACONH,CBCACONH_131,H87N-CA-HN,?-?-?,121.321,60.457,130635,7.66,H87,Y86,"N,CA,HN",sequential_i_minus_1,medium,fragment R067
+CBCACONH,CBCACONH_132,H87N-CA-HN,?-?-?,121.298,32.176,77696,7.662,H87,Y86,"N,CA,HN",sequential_i_minus_1,medium,fragment R067
+CBCACONH,CBCACONH_133,A84N-Cx-HN,?-?-?,121.051,54.779,284470,8.37,A84,A83,"N,Cx,HN",sequential_i_minus_1,medium,fragment R007
+CBCACONH,CBCACONH_134,A84N-Cx-HN,?-?-?,121.047,18.316,149866,8.37,A84,A83,"N,Cx,HN",sequential_i_minus_1,medium,fragment R007
+CBCACONH,CBCACONH_135,H89N-Cx-HN,?-?-?,117.278,54.469,291242,8.094,H89,T88,"N,Cx,HN",sequential_i_minus_1,medium,fragment R054
+CBCACONH,CBCACONH_136,H89N-Cx-HN,?-?-?,117.278,18.228,164097,8.093,H89,T88,"N,Cx,HN",sequential_i_minus_1,medium,fragment R054
+CBCACONH,CBCACONH_137,,?-?-?,119.437,58.586,275115,7.915,,,,,low,not in map
+CBCACONH,CBCACONH_138,,?-?-?,119.446,30.39,118407,7.918,,,,,low,not in map
+CBCACONH,CBCACONH_139,H89N-Cx-HN,?-?-?,117.11,59.681,203297,7.939,H89,T88,"N,Cx,HN",sequential_i_minus_1,medium,fragment R054
+CBCACONH,CBCACONH_140,H89N-Cx-HN,?-?-?,117.127,38.31,103770,7.94,H89,T88,"N,Cx,HN",sequential_i_minus_1,medium,fragment R054
+CBCACONH,CBCACONH_141,,?-?-?,112.138,56.746,255341,7.705,,,,,low,not in map
+CBCACONH,CBCACONH_142,,?-?-?,112.145,29.578,154559,7.698,,,,,low,not in map
+CBCACONH,CBCACONH_143,,?-?-?,121.114,62.552,132824,8.133,,,,,low,not in map
+CBCACONH,CBCACONH_144,,?-?-?,121.114,69.854,30093,8.123,,,,,low,not in map
+CBCACONH,CBCACONH_145,,?-?-?,123.24,56.025,395564,8.083,,,,,low,not in map
+CBCACONH,CBCACONH_146,,?-?-?,123.237,29.73,83588,8.051,,,,,low,not in map
+CBCACONH,CBCACONH_147,,?-?-?,127.059,56.253,2568142,7.893,,,,,low,not in map
+CBCACONH,CBCACONH_148,,?-?-?,127.066,33.06,1355184,7.893,,,,,low,not in map
