@@ -106,10 +106,10 @@ E31N-HN
 The app avoids asking the LLM to do large numeric matching or write one JSON row for every peak. That was expensive and often lost cross-experiment evidence. The current workflow is:
 
 1. Programmatically group peaks with matching `HN` and `N` into `observed_residue_terms` with temporary IDs such as `R001`.
-2. Programmatically connect terms into one or more `connected_fragments` by matching each term's `i-1` Cx evidence against another term's intra Cx evidence.
-3. Send compact connected fragments, not full peak tables, to the LLM for sequence-fragment validation.
-4. Break rejected links and retry validation until all possible terms are placed or three validation rounds produce no new assignments.
-5. Programmatically apply accepted fragment placements back to all uploaded peak lists.
+2. Programmatically prepare candidate `i-1` Cx links without forcing final connectivity.
+3. Send compact observed terms plus candidate links, not full peak tables, to the LLM.
+4. Let the LLM establish likely links, infer residue types, handle possible HN/N merges or splits, and verify placements against the uploaded protein sequence.
+5. Programmatically apply accepted placements back to all uploaded peak lists.
 
 This reduces token use and keeps the global backbone-walk context intact.
 
@@ -119,21 +119,20 @@ This reduces token use and keeps the global backbone-walk context intact.
 
 The backend uses the stage files this way:
 
-- Stage 2/3: implemented programmatically in `server.js` as pseudo-residue grouping and fragment building
-- Stage 4: programmatic fill from LLM-validated fragment placements
-- Stage 5/6 LLM call: controller + compact fragments + stage 5 + stage 6
+- Stage 2/3: implemented programmatically in `server.js` as pseudo-residue grouping and candidate-link preparation
+- Stage 4: programmatic fill from LLM-accepted placements
+- Stage 5/6 LLM call: controller + compact observed terms + candidate links + stage 5 + stage 6
 
 This keeps input tokens smaller and avoids asking the LLM to perform large-scale ppm matching.
 
-Fragment validation is batched so the model does not hit output-token limits. Useful `.env` controls:
+LLM reasoning is limited by compact inputs and plain-text output. Useful `.env` controls:
 
-- `FRAGMENT_VALIDATION_BATCH_SIZE=4`
-- `FRAGMENT_VALIDATION_MAX_BATCHES=8`
+- `CANDIDATE_LINK_LIMIT=220`
 - `FRAGMENT_VALIDATION_MAX_TOKENS=4000`
 
-If the model still hits `max_tokens`, lower `FRAGMENT_VALIDATION_BATCH_SIZE` to `2` before raising token limits.
+If the model still hits `max_tokens`, lower `CANDIDATE_LINK_LIMIT` before raising token limits.
 
-The fragment-validation LLM output uses a compact plain-text line protocol, not JSON, for example `F001|31|m|R001:E31,R002:G32` and `!R002>R003`. The backend parses those lines back into internal JSON objects.
+The LLM output uses a compact plain-text line protocol, not JSON, for example `P|m|R001:E31,R002:G32`, `L|m|R001>R002`, `T|R001|D,E,N,Q|m`, and `!R002>R003`. The backend parses those lines back into internal JSON objects.
 
 ## Default Tolerances
 

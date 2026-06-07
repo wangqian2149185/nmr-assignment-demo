@@ -987,7 +987,9 @@
         state.tokenUsage = data.usage || state.tokenUsage;
         renderResults();
         const usedTokens = totalTokens(state.tokenUsage);
-        if (state.validationSkippedReason === "no_connected_fragments") {
+        if (state.validationSkippedReason === "no_observed_terms") {
+          setStatus(`<strong>No LLM validation was run.</strong> Program could not build observed residue terms. Check HSQC HN/N column mapping and uploaded peak lists.`, "warn");
+        } else if (state.validationSkippedReason === "no_connected_fragments") {
           setStatus(`<strong>No LLM validation was run.</strong> Program found ${formatNumber(state.observedResidueTerms.length)} pseudo residues but no connected fragments. Check HNCACB and HN(CO)CACB/CBCA(CO)NH Cx column mapping and tolerances.`, "warn");
         } else if (state.validationSkippedReason === "llm_validation_disabled") {
           setStatus(`<strong>LLM validation is disabled.</strong> Set AMBIGUOUS_REFINE_LIMIT above 0 in .env and restart the server.`, "warn");
@@ -1042,13 +1044,13 @@
             if (event.stage === "map_applied") {
               setStatus(`Residue map built with <strong>${formatNumber(event.residue_count)}</strong> anchors; <strong>${formatNumber(event.ambiguous_count)}</strong> peaks queued for local/refine handling. Tokens: <strong>${formatNumber(totalTokens(state.tokenUsage))}</strong>.`, "warn");
             } else if (event.stage === "fragments_built") {
-              setStatus(`Built <strong>${formatNumber(event.fragment_count)}</strong> connected fragments from <strong>${formatNumber(event.residue_terms)}</strong> pseudo residues. Iteration <strong>${event.iteration}</strong>.`, "warn");
+              setStatus(`Grouped <strong>${formatNumber(event.residue_terms)}</strong> pseudo residues and prepared <strong>${formatNumber(event.candidate_link_count || 0)}</strong> candidate links for Opus reasoning. Iteration <strong>${event.iteration}</strong>.`, "warn");
             } else if (event.stage === "fragment_batch") {
-              setStatus(`Validating fragment batch <strong>${event.batch_index}</strong> of <strong>${event.batch_count}</strong> with LLM. Fragments in batch: <strong>${event.fragment_count}</strong>.`, "warn");
+              setStatus(`Sending observed residue terms to LLM for connection, type, split/merge, and sequence reasoning. Terms: <strong>${event.fragment_count}</strong>.`, "warn");
             } else if (event.stage === "fragments_validated") {
               setStatus(`LLM validated fragments. Assigned pseudo residues: <strong>${formatNumber(event.assigned_residue_terms)}</strong>; rejected links: <strong>${formatNumber(event.rejected_links)}</strong>. Iteration <strong>${event.iteration}</strong>.`, "warn");
             } else if (event.stage === "validation_skipped") {
-              const reason = event.reason === "no_connected_fragments" ? "no connected fragments were built" : "LLM validation is disabled";
+              const reason = event.reason === "no_observed_terms" ? "no observed residue terms were built" : event.reason === "no_connected_fragments" ? "no connected fragments were built" : "LLM validation is disabled";
               setStatus(`Fragment validation skipped: <strong>${reason}</strong>.`, "warn");
             } else {
               const batchText = event.batch_count ? `batch ${event.batch_index} of ${event.batch_count}` : "next stage";

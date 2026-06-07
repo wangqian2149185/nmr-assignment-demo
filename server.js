@@ -11,9 +11,8 @@ const ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY || "";
 const ANTHROPIC_MODEL = process.env.ANTHROPIC_MODEL || "claude-opus-4-7";
 const ANTHROPIC_MAX_TOKENS = Number(process.env.ANTHROPIC_MAX_TOKENS || 24000);
 const AMBIGUOUS_REFINE_LIMIT = Number(process.env.AMBIGUOUS_REFINE_LIMIT || 40);
-const FRAGMENT_VALIDATION_BATCH_SIZE = Number(process.env.FRAGMENT_VALIDATION_BATCH_SIZE || 4);
-const FRAGMENT_VALIDATION_MAX_BATCHES = Number(process.env.FRAGMENT_VALIDATION_MAX_BATCHES || 8);
 const FRAGMENT_VALIDATION_MAX_TOKENS = Number(process.env.FRAGMENT_VALIDATION_MAX_TOKENS || 4000);
+const CANDIDATE_LINK_LIMIT = Number(process.env.CANDIDATE_LINK_LIMIT || 220);
 const MAX_BODY_BYTES = 8 * 1024 * 1024;
 const LOOSE_TOL = { H: 0.2, C: 0.5, N: 0.8 };
 const CONFIRM_TOL = { H: 0.04, C: 0.25, N: 0.3 };
@@ -119,35 +118,41 @@ function readBody(req) {
   });
 }
 
-function buildFragmentValidationPrompt(payload, fragments, iteration, batchIndex, previousFeedback) {
+function buildFragmentValidationPrompt(payload, terms, candidateLinks, iteration, previousFeedback) {
   const skill = loadStageSkills([
     "stage_5_refine_ambiguous.md",
     "stage_6_validation.md"
   ]);
   const data = {
     iteration,
-    batch_index: batchIndex,
     sequence: payload.sequence || [],
-    connected_fragments: fragments,
+    observed_terms: terms,
+    candidate_links: candidateLinks,
     previous_feedback: previousFeedback || []
   };
   return [
-    "Validate a SMALL BATCH of connected pseudo-residue fragments from protein NMR spectra.",
-    "The app grouped peaks by matching HN/N and linked pseudo residues with i-1 Cx evidence.",
-    "Decide whether each fragment can be a contiguous part of the uploaded protein sequence.",
-    "Use conservative chemical-shift reasoning: HN, N, intra Cx, i-1 Cx, Gly N 90-110 and no CB, Ser/Thr high CB, Ala low CB, Pro amide gaps.",
+    "Interpret observed pseudo-residue terms from protein NMR spectra.",
+    "The app only grouped peaks by HN/N tolerance. You must reason about Cx evidence, links, possible merges, possible splits, residue types, and sequence placement.",
+    "Each observed term may contain mixed peaks if multiple residues have similar HN/N. If Cx evidence supports a clear split, return placements for the split-like subset by mapping only confident temp IDs; otherwise do not split.",
+    "HNCACB/HNCA anchor Cx may include both residue i and i-1 peaks. HN(CO)CA/CBCA(CO)NH prev_cx is i-1-only evidence. Missing CA or CB is allowed.",
+    "Some residues may have missing HN/N terms. Some terms may have missing Cx. Do not force complete connectivity.",
+    "Build likely sequential links using i-1 Cx evidence, infer tentative residue types from N/CA/CB, then use the uploaded protein sequence to verify assignment.",
     "Return ONLY plain text line protocol. No JSON.",
-    "Placement line format: F001|31|m|R001:E31,R002:G32",
-    "Rejected link line format: !R001>R002",
-    "If there is no confident placement or rejected link, return exactly: NONE",
+    "Placement line: P|m|R001:E31,R002:G32",
+    "Link line: L|m|R001>R002",
+    "Residue-type line: T|R001|A,V,L|m",
+    "Rejected link line: !R001>R002",
+    "If there is no confident placement, type, link, or rejected link, return exactly: NONE",
     "Rules:",
-    "- Placement columns are fragment_id|start sequence index|confidence|temp_id:residue_label pairs.",
+    "- P means sequence placement; confidence is h, m, or l; map temp_id to residue_label.",
+    "- L means accepted sequential link from previous residue term to next residue term.",
+    "- T means possible residue types for a temp_id, comma-separated one-letter codes.",
+    "- ! means reject a candidate link.",
     "- Confidence is h, m, or l.",
-    "- Use one placement or rejected-link line per result.",
-    "- Omit uncertain fragments instead of explaining them.",
-    "- Include only confident or useful placements. Do not return every fragment.",
+    "- Use one line per result. Include only confident or useful results. Do not return every term.",
+    "- If a term appears merged but cannot be confidently split, leave it unplaced or low confidence.",
     "- No notes, no mismatches, no prose, no markdown, no code fences.",
-    "- Keep output under 2000 tokens.",
+    "- Keep output under 3000 tokens.",
     "- Do not output field names.",
     "SKILL_CONTEXT:",
     skill,
@@ -289,7 +294,7 @@ async function callAnthropicTextStream(prompt, onEvent, signal, maxTokens = ANTH
   }
 
   if (stopReason === "max_tokens") {
-    throw new Error(`Model output hit the ${maxTokens} token limit. Try lowering FRAGMENT_VALIDATION_BATCH_SIZE or raising FRAGMENT_VALIDATION_MAX_TOKENS in .env.`);
+    throw new Error(`Model output hit the ${maxTokens} token limit. Try lowering CANDIDATE_LINK_LIMIT or raising FRAGMENT_VALIDATION_MAX_TOKENS in .env.`);
   }
   return {
     engine: `anthropic:${ANTHROPIC_MODEL}`,
@@ -434,6 +439,29 @@ function buildResidueLinks(terms, rejectedLinks = new Set()) {
   return links;
 }
 
+function buildCandidateLinks(terms, rejectedLinks = new Set()) {
+  const candidates = [];
+  for (const next of terms) {
+    for (const prev of terms) {
+      if (prev.temp_id === next.temp_id) continue;
+      const key = `${prev.temp_id}->${next.temp_id}`;
+      if (rejectedLinks.has(key)) continue;
+      const prevOnlyScore = carbonSetMatchScore(next.previous_carbons, prev.intra_carbons);
+      const hncacbAmbiguousScore = carbonSetMatchScore(next.intra_carbons, prev.intra_carbons) * 0.5;
+      const score = prevOnlyScore + hncacbAmbiguousScore;
+      if (score <= 0) continue;
+      candidates.push({
+        a: prev.temp_id,
+        b: next.temp_id,
+        s: Number(score.toFixed(2)),
+        prev_cx: next.previous_carbons,
+        a_cx: prev.intra_carbons
+      });
+    }
+  }
+  return candidates.sort((a, b) => b.s - a.s).slice(0, CANDIDATE_LINK_LIMIT);
+}
+
 function buildConnectedFragments(terms, links) {
   const byId = new Map(terms.map(term => [term.temp_id, term]));
   const nextById = new Map(links.map(link => [link.from_temp_id, link]));
@@ -471,26 +499,17 @@ function buildConnectedFragments(terms, links) {
   return fragments.filter(fragment => fragment.length > 1);
 }
 
-function compactFragmentsForLLM(fragments) {
-  return fragments.map(fragment => ({
-    fragment_id: fragment.fragment_id,
-    length: fragment.length,
-    residues: fragment.residues.map(term => ({
-      temp_id: term.temp_id,
-      HN: term.HN,
-      N: term.N,
-      intra_carbons: term.intra_carbons,
-      previous_carbons: term.previous_carbons,
-      co_i_minus_1: term.co_i_minus_1,
-      hx_values: term.hx_values,
-      seed_or_current_assignment: term.candidate_residue_label || "",
-      confidence: term.confidence || "unplaced"
-    })),
-    links: fragment.links.map(link => ({
-      from_temp_id: link.from_temp_id,
-      to_temp_id: link.to_temp_id,
-      score: link.score
-    }))
+function compactObservedTermsForLLM(terms) {
+  return terms.map(term => ({
+    id: term.temp_id,
+    HN: term.HN,
+    N: term.N,
+    cx: term.intra_carbons,
+    prev_cx: term.previous_carbons,
+    co_prev: term.co_i_minus_1,
+    hx: term.hx_values,
+    peaks: term.peak_refs.length,
+    seed: term.candidate_residue_label || ""
   }));
 }
 
@@ -504,35 +523,16 @@ function normalizeRejectedLinks(feedback) {
   return rejected;
 }
 
-function normalizeFragmentValidationResult(result) {
-  const placements = [];
-  for (const item of result.p || result.placements || []) {
-    const residueMap = item.m || item.residue_labels_by_temp_id || {};
-    placements.push({
-      fragment_id: item.f || item.fragment_id || "",
-      start_index: item.s || item.start_index || "",
-      confidence: item.c === "h" ? "high" : item.c === "m" ? "medium" : item.c === "l" ? "low" : (item.confidence || "medium"),
-      residue_labels_by_temp_id: residueMap
-    });
-  }
-  const rejected_links = [];
-  for (const item of result.x || result.rejected_links || []) {
-    rejected_links.push({
-      from_temp_id: item.a || item.from_temp_id || "",
-      to_temp_id: item.b || item.to_temp_id || ""
-    });
-  }
-  return { placements, rejected_links };
-}
-
 function parseFragmentLineProtocol(text) {
   const placements = [];
   const rejected_links = [];
+  const accepted_links = [];
+  const residue_types = [];
   const cleaned = String(text || "")
     .replace(/```(?:text)?/gi, "")
     .replace(/```/g, "")
     .trim();
-  if (!cleaned || /^NONE$/i.test(cleaned)) return { placements, rejected_links };
+  if (!cleaned || /^NONE$/i.test(cleaned)) return { placements, rejected_links, accepted_links, residue_types };
 
   for (const rawLine of cleaned.split(/\r?\n/)) {
     const line = rawLine.trim();
@@ -548,23 +548,56 @@ function parseFragmentLineProtocol(text) {
       continue;
     }
     const parts = line.split("|").map(part => part.trim());
-    if (parts.length < 4) continue;
-    const [fragmentId, startIndex, confidenceRaw, mappingText] = parts;
+    if (parts[0] === "L" && parts.length >= 3) {
+      const c = (parts[1] || "m").toLowerCase()[0];
+      const match = parts[2].match(/([A-Za-z]\d+)\s*>\s*([A-Za-z]\d+)/);
+      if (match) {
+        accepted_links.push({
+          from_temp_id: match[1].toUpperCase(),
+          to_temp_id: match[2].toUpperCase(),
+          confidence: c === "h" ? "high" : c === "l" ? "low" : "medium"
+        });
+      }
+      continue;
+    }
+    if (parts[0] === "T" && parts.length >= 4) {
+      const c = (parts[3] || "m").toLowerCase()[0];
+      residue_types.push({
+        temp_id: String(parts[1] || "").toUpperCase(),
+        possible_types: parts[2].split(",").map(value => value.trim().toUpperCase()).filter(value => /^[A-Z]$/.test(value)),
+        confidence: c === "h" ? "high" : c === "l" ? "low" : "medium"
+      });
+      continue;
+    }
+    let fragmentId = "";
+    let startIndex = "";
+    let confidenceRaw = "";
+    let mappingText = "";
+    if (parts[0] === "P" && parts.length >= 3) {
+      fragmentId = "";
+      startIndex = "";
+      confidenceRaw = parts[1] || "m";
+      mappingText = parts[2] || "";
+    } else if (parts.length >= 4) {
+      [fragmentId, startIndex, confidenceRaw, mappingText] = parts;
+    } else {
+      continue;
+    }
     const residueMap = {};
     for (const pair of mappingText.split(",")) {
       const [tempId, residueLabel] = pair.split(":").map(value => String(value || "").trim().toUpperCase());
       if (/^R\d+$/i.test(tempId) && /^[A-Z]\d+$/i.test(residueLabel)) residueMap[tempId] = residueLabel;
     }
-    if (!fragmentId || !Object.keys(residueMap).length) continue;
+    if (!Object.keys(residueMap).length) continue;
     const c = confidenceRaw.toLowerCase()[0] || "m";
     placements.push({
-      fragment_id: fragmentId,
+      fragment_id: fragmentId || "llm",
       start_index: Number(startIndex) || "",
       confidence: c === "h" ? "high" : c === "l" ? "low" : "medium",
       residue_labels_by_temp_id: residueMap
     });
   }
-  return { placements, rejected_links };
+  return { placements, rejected_links, accepted_links, residue_types };
 }
 
 function placementMapFromFeedback(feedback) {
@@ -581,6 +614,26 @@ function placementMapFromFeedback(feedback) {
   return out;
 }
 
+function acceptedLinksFromFeedback(feedback) {
+  const links = [];
+  const seen = new Set();
+  for (const item of feedback || []) {
+    for (const link of item.accepted_links || []) {
+      if (!link.from_temp_id || !link.to_temp_id) continue;
+      const key = `${link.from_temp_id}->${link.to_temp_id}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      links.push({
+        from_temp_id: link.from_temp_id,
+        to_temp_id: link.to_temp_id,
+        score: link.confidence === "high" ? 3 : link.confidence === "low" ? 1 : 2,
+        source: "llm"
+      });
+    }
+  }
+  return links;
+}
+
 function compactFeedbackForPrompt(feedback) {
   const lines = [];
   for (const item of feedback || []) {
@@ -591,6 +644,12 @@ function compactFeedbackForPrompt(feedback) {
     }
     for (const link of item.rejected_links || []) {
       if (link.from_temp_id && link.to_temp_id) lines.push(`!${link.from_temp_id}>${link.to_temp_id}`);
+    }
+    for (const link of item.accepted_links || []) {
+      if (link.from_temp_id && link.to_temp_id) lines.push(`L|${String(link.confidence || "medium")[0].toLowerCase()}|${link.from_temp_id}>${link.to_temp_id}`);
+    }
+    for (const type of item.residue_types || []) {
+      if (type.temp_id && type.possible_types?.length) lines.push(`T|${type.temp_id}|${type.possible_types.join(",")}|${String(type.confidence || "medium")[0].toLowerCase()}`);
     }
   }
   return lines.join("\n") || "NONE";
@@ -621,16 +680,6 @@ function applyPlacementsToTerms(terms, placements) {
   });
 }
 
-function fragmentBatches(fragments) {
-  const sorted = [...fragments].sort((a, b) => b.length - a.length);
-  const limited = sorted.slice(0, Math.max(0, FRAGMENT_VALIDATION_BATCH_SIZE * FRAGMENT_VALIDATION_MAX_BATCHES));
-  const batches = [];
-  for (let start = 0; start < limited.length; start += FRAGMENT_VALIDATION_BATCH_SIZE) {
-    batches.push(limited.slice(start, start + FRAGMENT_VALIDATION_BATCH_SIZE));
-  }
-  return batches;
-}
-
 async function validateFragmentsWithLLM(payload, terms, onEvent, signal) {
   const usage = {};
   const feedback = [];
@@ -639,18 +688,18 @@ async function validateFragmentsWithLLM(payload, terms, onEvent, signal) {
   let stalled = 0;
   let fragments = [];
   let skippedReason = "";
+  if (!terms.length) {
+    skippedReason = "no_observed_terms";
+    onEvent({ type: "progress", stage: "validation_skipped", reason: skippedReason });
+    return { usage, feedback, placements, residueTerms: terms, connectedFragments: [], skippedReason };
+  }
 
   for (let iteration = 1; iteration <= 3; iteration += 1) {
     const rejectedLinks = normalizeRejectedLinks(feedback);
     const placedTerms = applyPlacementsToTerms(terms, placements);
-    const links = buildResidueLinks(placedTerms, rejectedLinks);
-    fragments = buildConnectedFragments(placedTerms, links);
-    onEvent({ type: "progress", stage: "fragments_built", iteration, residue_terms: terms.length, fragment_count: fragments.length });
-    if (!fragments.length) {
-      skippedReason = "no_connected_fragments";
-      onEvent({ type: "progress", stage: "validation_skipped", reason: skippedReason });
-      break;
-    }
+    const candidateLinks = buildCandidateLinks(placedTerms, rejectedLinks);
+    fragments = buildConnectedFragments(placedTerms, acceptedLinksFromFeedback(feedback));
+    onEvent({ type: "progress", stage: "fragments_built", iteration, residue_terms: terms.length, fragment_count: fragments.length, candidate_link_count: candidateLinks.length });
     if (!ANTHROPIC_API_KEY) {
       throw new Error("Missing ANTHROPIC_API_KEY. Fragment validation cannot call Anthropic.");
     }
@@ -660,26 +709,29 @@ async function validateFragmentsWithLLM(payload, terms, onEvent, signal) {
       break;
     }
 
-    const batches = fragmentBatches(fragments);
     let rejectedThisIteration = 0;
-    for (let batchIndex = 0; batchIndex < batches.length; batchIndex += 1) {
-      onEvent({ type: "progress", stage: "fragment_batch", iteration, batch_index: batchIndex + 1, batch_count: batches.length, fragment_count: batches[batchIndex].length });
-      let previousUsage = {};
-      const result = await callAnthropicTextStream(buildFragmentValidationPrompt(payload, compactFragmentsForLLM(batches[batchIndex]), iteration, batchIndex + 1, compactFeedbackForPrompt(feedback)), event => {
-        if (event.type !== "usage") return onEvent(event);
-        const delta = {};
-        for (const [key, value] of Object.entries(event.usage || {})) {
-          if (typeof value === "number") delta[key] = value - (previousUsage[key] || 0);
-        }
-        previousUsage = event.usage || {};
-        addUsage(usage, delta);
-        onEvent({ type: "usage", usage });
-      }, signal, FRAGMENT_VALIDATION_MAX_TOKENS);
-      const parsed = parseFragmentLineProtocol(result.text);
-      rejectedThisIteration += parsed.rejected_links.length;
-      feedback.push(parsed);
-      placements = placementMapFromFeedback(feedback);
-    }
+    let previousUsage = {};
+    onEvent({ type: "progress", stage: "fragment_batch", iteration, batch_index: 1, batch_count: 1, fragment_count: placedTerms.length });
+    const result = await callAnthropicTextStream(buildFragmentValidationPrompt(
+      payload,
+      compactObservedTermsForLLM(placedTerms),
+      candidateLinks,
+      iteration,
+      compactFeedbackForPrompt(feedback)
+    ), event => {
+      if (event.type !== "usage") return onEvent(event);
+      const delta = {};
+      for (const [key, value] of Object.entries(event.usage || {})) {
+        if (typeof value === "number") delta[key] = value - (previousUsage[key] || 0);
+      }
+      previousUsage = event.usage || {};
+      addUsage(usage, delta);
+      onEvent({ type: "usage", usage });
+    }, signal, FRAGMENT_VALIDATION_MAX_TOKENS);
+    const parsed = parseFragmentLineProtocol(result.text);
+    rejectedThisIteration += parsed.rejected_links.length;
+    feedback.push(parsed);
+    placements = placementMapFromFeedback(feedback);
     const assigned = placements.size;
     onEvent({ type: "progress", stage: "fragments_validated", iteration, assigned_residue_terms: assigned, rejected_links: rejectedThisIteration });
     if (assigned <= bestAssigned) stalled += 1;
@@ -689,7 +741,7 @@ async function validateFragmentsWithLLM(payload, terms, onEvent, signal) {
   }
 
   const finalTerms = applyPlacementsToTerms(terms, placements);
-  const finalLinks = buildResidueLinks(finalTerms, normalizeRejectedLinks(feedback));
+  const finalLinks = acceptedLinksFromFeedback(feedback);
   const finalFragments = buildConnectedFragments(finalTerms, finalLinks);
   return { usage, feedback, placements, residueTerms: finalTerms, connectedFragments: finalFragments, skippedReason };
 }
