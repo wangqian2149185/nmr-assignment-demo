@@ -43,7 +43,7 @@ Edit `.env`:
 
 ```text
 ANTHROPIC_API_KEY=<your-anthropic-api-key>
-ANTHROPIC_MODEL=claude-sonnet-4-5
+ANTHROPIC_MODEL=claude-opus-4-7
 PORT=8765
 ```
 

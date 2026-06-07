@@ -8,7 +8,7 @@ const PORT = Number(process.env.PORT || 8765);
 loadEnv(path.join(ROOT, ".env"));
 
 const ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY || "";
-const ANTHROPIC_MODEL = process.env.ANTHROPIC_MODEL || "claude-sonnet-4-5";
+const ANTHROPIC_MODEL = process.env.ANTHROPIC_MODEL || "claude-opus-4-7";
 const ANTHROPIC_MAX_TOKENS = Number(process.env.ANTHROPIC_MAX_TOKENS || 24000);
 const AMBIGUOUS_REFINE_LIMIT = Number(process.env.AMBIGUOUS_REFINE_LIMIT || 40);
 const FRAGMENT_VALIDATION_BATCH_SIZE = Number(process.env.FRAGMENT_VALIDATION_BATCH_SIZE || 4);
@@ -639,6 +639,7 @@ async function validateFragmentsWithLLM(payload, terms, onEvent, signal) {
   let bestAssigned = placements.size;
   let stalled = 0;
   let fragments = [];
+  let skippedReason = "";
 
   for (let iteration = 1; iteration <= 3; iteration += 1) {
     const rejectedLinks = normalizeRejectedLinks(feedback);
@@ -646,7 +647,19 @@ async function validateFragmentsWithLLM(payload, terms, onEvent, signal) {
     const links = buildResidueLinks(placedTerms, rejectedLinks);
     fragments = buildConnectedFragments(placedTerms, links);
     onEvent({ type: "progress", stage: "fragments_built", iteration, residue_terms: terms.length, fragment_count: fragments.length });
-    if (!fragments.length || !ANTHROPIC_API_KEY || AMBIGUOUS_REFINE_LIMIT === 0) break;
+    if (!fragments.length) {
+      skippedReason = "no_connected_fragments";
+      onEvent({ type: "progress", stage: "validation_skipped", reason: skippedReason });
+      break;
+    }
+    if (!ANTHROPIC_API_KEY) {
+      throw new Error("Missing ANTHROPIC_API_KEY. Fragment validation cannot call Anthropic.");
+    }
+    if (AMBIGUOUS_REFINE_LIMIT === 0) {
+      skippedReason = "llm_validation_disabled";
+      onEvent({ type: "progress", stage: "validation_skipped", reason: skippedReason });
+      break;
+    }
 
     const batches = fragmentBatches(fragments);
     let rejectedThisIteration = 0;
@@ -679,7 +692,7 @@ async function validateFragmentsWithLLM(payload, terms, onEvent, signal) {
   const finalTerms = applyPlacementsToTerms(terms, placements);
   const finalLinks = buildResidueLinks(finalTerms, normalizeRejectedLinks(feedback));
   const finalFragments = buildConnectedFragments(finalTerms, finalLinks);
-  return { usage, feedback, placements, residueTerms: finalTerms, connectedFragments: finalFragments };
+  return { usage, feedback, placements, residueTerms: finalTerms, connectedFragments: finalFragments, skippedReason };
 }
 
 function residueMapFromObservedTerms(payload, terms) {
@@ -856,6 +869,7 @@ async function callAnthropicResidueMapWorkflowStream(payload, onEvent, signal) {
   return {
     engine: `programmatic-terms-fragments+anthropic:${ANTHROPIC_MODEL}:fragment-validation`,
     usage: validation.usage,
+    validation_skipped_reason: validation.skippedReason,
     observed_residue_terms: validation.residueTerms,
     connected_fragments: validation.connectedFragments,
     fragment_validation_feedback: validation.feedback,
