@@ -229,7 +229,6 @@ async function callAnthropicTextStream(prompt, onEvent, signal, maxTokens = ANTH
     body: JSON.stringify({
       model: ANTHROPIC_MODEL,
       max_tokens: maxTokens,
-      temperature: 0,
       stream: true,
       messages: [
         { role: "user", content: prompt }
